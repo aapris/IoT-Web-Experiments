@@ -1,7 +1,8 @@
+import os
 from django.conf.urls import url
 from . import views
 
-OBSCURE_URL = r'^obs$'
+OBSCURE_URL = r'^{}$'.format(os.environ.get('OBSCURE_URL', 'this_should_be_in_env_var'))
 
 urlpatterns = [
     url(r'^$', views.index, name='index'),
