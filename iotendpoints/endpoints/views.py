@@ -5,9 +5,10 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from endpoints.models import Request
 
-
-META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER', 'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT']
+META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
+             'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT']
 
 
 def index(request):
@@ -16,6 +17,7 @@ def index(request):
 
 @csrf_exempt
 def obscure_dump_request_endpoint(request):
+    r = Request(method=request.method)
     res = []
     res.append('Request Method: {}'.format(request.method))
 
@@ -34,7 +36,9 @@ def obscure_dump_request_endpoint(request):
 
     res.append('--- FILES ---')
     now = timezone.now().astimezone(pytz.utc)
-    fpath = os.path.join(settings.MEDIA_ROOT, now.strftime('%Y%m%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
+    r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
+    fpath = os.path.join(settings.MEDIA_ROOT, r.path)
+
     os.makedirs(fpath, exist_ok=True)
     fnr = 0
     for key, val in request.FILES.items():
@@ -48,6 +52,8 @@ def obscure_dump_request_endpoint(request):
         with open(fname, 'wb+') as destination:
             for chunk in f.chunks():
                 destination.write(chunk)
+    r.filecount = fnr
+    r.save()
     fname = os.path.join(fpath, 'request.txt')
     with open(fname, 'wt+') as destination:
         destination.write('\n'.join(res))
