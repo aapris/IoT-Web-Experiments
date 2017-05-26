@@ -34,7 +34,7 @@ def obscure_dump_request_endpoint(request):
 
     res.append('--- FILES ---')
     now = timezone.now().astimezone(pytz.utc)
-    fpath = os.path.join(settings.MEDIA_ROOT, now.strftime('%Y%m%dT%H%M%S.%fZ'))
+    fpath = os.path.join(settings.MEDIA_ROOT, now.strftime('%Y%m%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
     os.makedirs(fpath, exist_ok=True)
     fnr = 0
     for key, val in request.FILES.items():
