@@ -17,7 +17,18 @@ def index(request):
 
 @csrf_exempt
 def obscure_dump_request_endpoint(request):
+    """
+    Dump a HttpRequest to files in a directory.    
+    """
+    now = timezone.now().astimezone(pytz.utc)
     r = Request(method=request.method)
+    r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
+    fpath = os.path.join(settings.MEDIA_ROOT, r.path)
+    os.makedirs(fpath, exist_ok=True)
+    fname = os.path.join(fpath, 'request.raw')
+    with open(fname, 'wb') as destination:
+        destination.write(request.body)
+
     res = []
     res.append('Request Method: {}'.format(request.method))
 
@@ -35,11 +46,7 @@ def obscure_dump_request_endpoint(request):
             res.append('{}={}'.format(key, val))
 
     res.append('--- FILES ---')
-    now = timezone.now().astimezone(pytz.utc)
-    r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
-    fpath = os.path.join(settings.MEDIA_ROOT, r.path)
 
-    os.makedirs(fpath, exist_ok=True)
     fnr = 0
     for key, val in request.FILES.items():
         res.append('{}. {}={}'.format(fnr, key, val))
