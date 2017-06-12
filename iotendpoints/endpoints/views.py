@@ -1,11 +1,14 @@
 import os
 import pytz
+import base64
 # from django.shortcuts import render
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from endpoints.models import Request
+from django.contrib.auth import authenticate
+
 
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT']
@@ -15,10 +18,9 @@ def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
 
 
-@csrf_exempt
-def obscure_dump_request_endpoint(request):
+def _dump_request_endpoint(request):
     """
-    Dump a HttpRequest to files in a directory.    
+    Dump a HttpRequest to files in a directory.
     """
     now = timezone.now().astimezone(pytz.utc)
     r = Request(method=request.method)
@@ -64,5 +66,51 @@ def obscure_dump_request_endpoint(request):
     fname = os.path.join(fpath, 'request.txt')
     with open(fname, 'wt+') as destination:
         destination.write('\n'.join(res))
-    print('\n'.join(res))
+    return res
+
+
+@csrf_exempt
+def obscure_dump_request_endpoint(request):
+    """
+    Dump a HttpRequest to files in a directory.    
+    """
+    res = _dump_request_endpoint(request)
+    print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped HTTP request data to a file.")
+
+
+def _basicauth(request):
+    # Check for valid basic auth header
+    if 'HTTP_AUTHORIZATION' in request.META:
+        auth = request.META['HTTP_AUTHORIZATION'].split()
+        if len(auth) == 2:
+            if auth[0].lower() == "basic":
+                a = auth[1].encode('utf8')
+                s = base64.b64decode(a)
+                uname, passwd = s.decode('utf8').split(':')
+                user = authenticate(username=uname, password=passwd)
+                return uname, passwd, user
+    return None, None, None
+
+
+@csrf_exempt
+def basicauth_dump_request_endpoint(request):
+    """
+    Dump a HttpRequest to files in a directory.
+    """
+    uname, passwd, user = _basicauth(request)
+    print(uname, passwd, user)
+
+    if uname is None:
+        # Either they did not provide an authorization header or
+        # something in the authorization attempt failed. Send a 401
+        # back to them to ask them to authenticate.
+        response = HttpResponse()
+        response.status_code = 401
+        BASIC_AUTH_REALM = 'test'
+        response['WWW-Authenticate'] = 'Basic realm="{}"'.format(BASIC_AUTH_REALM)
+        return response
+    else:
+        res = _dump_request_endpoint(request)
+        print('\n'.join(res))
+        return HttpResponse("OK, I dumped HTTP request data to a file.")

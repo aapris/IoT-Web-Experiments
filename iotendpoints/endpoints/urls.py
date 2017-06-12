@@ -13,4 +13,8 @@ OBSCURE_URL_PATTERN = r'^{}$'.format(os.environ.get('OBSCURE_URL', OBSCURE_URL))
 urlpatterns = [
     url(r'^$', views.index, name='index'),
     url(OBSCURE_URL_PATTERN, views.obscure_dump_request_endpoint, name='dump_request'),
+    url(r'^basicauth$', views.basicauth_dump_request_endpoint, name='basicauth_dump_request'),
 ]
+
+
+
