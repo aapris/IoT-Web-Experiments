@@ -105,7 +105,8 @@ def basicauth_dump_request_endpoint(request):
         # Either they did not provide an authorization header or
         # something in the authorization attempt failed. Send a 401
         # back to them to ask them to authenticate.
-        response = HttpResponse()
+        response = HttpResponse('<h1>401 Unauthorized</h1> You need a valid user account '
+                                '(username and password) to access this page.')
         response.status_code = 401
         BASIC_AUTH_REALM = 'test'
         response['WWW-Authenticate'] = 'Basic realm="{}"'.format(BASIC_AUTH_REALM)
