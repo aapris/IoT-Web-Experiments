@@ -101,7 +101,7 @@ def basicauth_dump_request_endpoint(request):
     uname, passwd, user = _basicauth(request)
     print(uname, passwd, user)
 
-    if uname is None:
+    if user is None:
         # Either they did not provide an authorization header or
         # something in the authorization attempt failed. Send a 401
         # back to them to ask them to authenticate.
