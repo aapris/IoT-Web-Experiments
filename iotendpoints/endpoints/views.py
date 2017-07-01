@@ -11,7 +11,7 @@ from django.contrib.auth import authenticate
 
 
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
-             'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT']
+             'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
 
 def index(request):
@@ -27,12 +27,13 @@ def _dump_request_endpoint(request):
     r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
     fpath = os.path.join(settings.MEDIA_ROOT, r.path)
     os.makedirs(fpath, exist_ok=True)
-    fname = os.path.join(fpath, 'request.raw')
+    fname = os.path.join(fpath, 'request_body.txt')
     with open(fname, 'wb') as destination:
         destination.write(request.body)
 
     res = []
     res.append('Request Method: {}'.format(request.method))
+    res.append('Request full path: {}'.format(request.get_full_path()))
 
     res.append('--- GET parameters ---')
     for key, val in request.GET.items():
@@ -63,7 +64,7 @@ def _dump_request_endpoint(request):
                 destination.write(chunk)
     r.filecount = fnr
     r.save()
-    fname = os.path.join(fpath, 'request.txt')
+    fname = os.path.join(fpath, 'request_headers.txt')
     with open(fname, 'wt+') as destination:
         destination.write('\n'.join(res))
     return res
