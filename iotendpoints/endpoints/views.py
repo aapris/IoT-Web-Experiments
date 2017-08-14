@@ -80,6 +80,16 @@ def obscure_dump_request_endpoint(request):
     return HttpResponse("OK, I dumped HTTP request data to a file.")
 
 
+@csrf_exempt
+def digita_dump_request_endpoint(request):
+    """
+    Dump a HttpRequest to files in a directory.    
+    """
+    res = _dump_request_endpoint(request)
+    print('\n'.join(res))  # to console or stdout/stderr
+    return HttpResponse("OK, I dumped Digita LoRa HTTP request data to a file.")
+
+
 def _basicauth(request):
     # Check for valid basic auth header
     if 'HTTP_AUTHORIZATION' in request.META:
