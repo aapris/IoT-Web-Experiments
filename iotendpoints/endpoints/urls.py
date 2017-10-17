@@ -19,6 +19,7 @@ urlpatterns = [
     url(OBSCURE_URL_PATTERN, views.obscure_dump_request_endpoint, name='dump_request'),
     url(DIGITA_URL_PATTERN, views.digita_dump_request_endpoint, name='digita_dump_request'),
     url(r'^basicauth$', views.basicauth_dump_request_endpoint, name='basicauth_dump_request'),
+    url(r'^aqtest$', views.basicauth_dump_request_endpoint, name='aqtest'),
 ]
 
 
