@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from endpoints.models import Request
 from django.contrib.auth import authenticate
-
+from .tasks import handle_datapost
 
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
@@ -82,6 +82,7 @@ def obscure_dump_request_endpoint(request):
 
 def _basicauth(request):
     # Check for valid basic auth header
+    uname, passwd, user = None, None, None
     if 'HTTP_AUTHORIZATION' in request.META:
         auth = request.META['HTTP_AUTHORIZATION'].split()
         if len(auth) == 2:
@@ -90,8 +91,7 @@ def _basicauth(request):
                 s = base64.b64decode(a)
                 uname, passwd = s.decode('utf8').split(':')
                 user = authenticate(username=uname, password=passwd)
-                return uname, passwd, user
-    return None, None, None
+    return uname, passwd, user
 
 
 @csrf_exempt
@@ -116,3 +116,12 @@ def basicauth_dump_request_endpoint(request):
         res = _dump_request_endpoint(request)
         print('\n'.join(res))
         return HttpResponse("OK, I dumped HTTP request data to a file.")
+
+
+@csrf_exempt
+def esphandler(request):
+    """
+    Dump a HttpRequest to files in a directory.
+    """
+    handle_datapost.delay({}, {})
+    return HttpResponse("OK")
