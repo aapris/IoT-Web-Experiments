@@ -18,12 +18,12 @@ def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
 
 
-def _dump_request_endpoint(request):
+def _dump_request_endpoint(request, user=None):
     """
     Dump a HttpRequest to files in a directory.
     """
     now = timezone.now().astimezone(pytz.utc)
-    r = Request(method=request.method)
+    r = Request(method=request.method, user=user)
     r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
     fpath = os.path.join(settings.MEDIA_ROOT, r.path)
     os.makedirs(fpath, exist_ok=True)
@@ -80,6 +80,16 @@ def obscure_dump_request_endpoint(request):
     return HttpResponse("OK, I dumped HTTP request data to a file.")
 
 
+@csrf_exempt
+def digita_dump_request_endpoint(request):
+    """
+    Dump a HttpRequest to files in a directory.    
+    """
+    res = _dump_request_endpoint(request)
+    print('\n'.join(res))  # to console or stdout/stderr
+    return HttpResponse("OK, I dumped Digita LoRa HTTP request data to a file.")
+
+
 def _basicauth(request):
     # Check for valid basic auth header
     uname, passwd, user = None, None, None
@@ -101,6 +111,30 @@ def basicauth_dump_request_endpoint(request):
     """
     uname, passwd, user = _basicauth(request)
     print(uname, passwd, user)
+
+    if user is None:
+        # Either they did not provide an authorization header or
+        # something in the authorization attempt failed. Send a 401
+        # back to them to ask them to authenticate.
+        response = HttpResponse('<h1>401 Unauthorized</h1> You need a valid user account '
+                                '(username and password) to access this page.')
+        response.status_code = 401
+        BASIC_AUTH_REALM = 'test'
+        response['WWW-Authenticate'] = 'Basic realm="{}"'.format(BASIC_AUTH_REALM)
+        return response
+    else:
+        res = _dump_request_endpoint(request, user=user)
+        print('\n'.join(res))
+        return HttpResponse("OK, I dumped HTTP request data to a file.")
+
+
+@csrf_exempt
+def aqtest(request):
+    """
+    Dump a HttpRequest to files in a directory.
+    """
+    uname, passwd, user = _basicauth(request)
+    #print(uname, passwd, user)
 
     if user is None:
         # Either they did not provide an authorization header or

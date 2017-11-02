@@ -2,12 +2,14 @@ import os
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from django.contrib.auth.models import User
 
 
 class Request(models.Model):
     """
     Metadata about Request.
     """
+    user = models.ForeignKey(User, blank=True, null=True, verbose_name='Sender')
     status = models.CharField(max_length=40, default="NEW",
                               choices=(("NEW", "New"),
                                        ("NOTIFIED", "Notified"),
