@@ -50,7 +50,7 @@ def sun(request):
         date = parse(date_str).date()
         pass
     sundata = {
-        'now': datetime.datetime.now().astimezone(pytz.UTC),
+        'now': datetime.datetime.now(tz=pytz.UTC),  # .astimezone(pytz.UTC),
         'date': date.strftime('%Y-%m-%d'),
         'lat': l.latitude,
         'lon': l.longitude,
@@ -65,12 +65,10 @@ def sun(request):
         sundata[k] = sun[k]
     if timeformat == 'iso':
         for k in sundata.keys():
-            print(type(sundata[k]))
             if isinstance(sundata[k], datetime.datetime):
                 sundata[k] = sundata[k].isoformat()
     else:  # timeformat == 'epoch':
         for k in sundata.keys():
-            print(type(sundata[k]))
             if isinstance(sundata[k], datetime.datetime):
                 sundata[k] = int(sundata[k].timestamp())
     res_str = json.dumps(sundata, indent=2)
