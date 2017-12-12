@@ -18,13 +18,15 @@ def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
 
 
-def _dump_request_endpoint(request, user=None):
+def _dump_request_endpoint(request, user=None, postfix=None):
     """
     Dump a HttpRequest to files in a directory.
     """
     now = timezone.now().astimezone(pytz.utc)
     r = Request(method=request.method, user=user)
     r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
+    if postfix:
+        r.path += '-' + postfix
     fpath = os.path.join(settings.MEDIA_ROOT, r.path)
     os.makedirs(fpath, exist_ok=True)
     fname = os.path.join(fpath, 'request_body.txt')
@@ -88,6 +90,16 @@ def digita_dump_request_endpoint(request):
     res = _dump_request_endpoint(request)
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped Digita LoRa HTTP request data to a file.")
+
+
+@csrf_exempt
+def sentilo_dump_request_endpoint(request):
+    """
+    Dump a HttpRequest to files in a directory.
+    """
+    res = _dump_request_endpoint(request, postfix='sentilo')
+    print('\n'.join(res))  # to console or stdout/stderr
+    return HttpResponse("OK, I dumped Sentilo HTTP request data to a file.")
 
 
 def _basicauth(request):
