@@ -23,8 +23,6 @@ urlpatterns = [
     url(SENTILO_URL_PATTERN, views.sentilo_dump_request_endpoint, name='sentilo_dump_request'),
     url(r'^basicauth$', views.basicauth_dump_request_endpoint, name='basicauth_dump_request'),
     url(r'^esp$', views.esphandler, name='esphandler'),
+    url(r'^espeasy/v1$', views.espeasyhandler, name='espeasyhandler'),
     url(r'^aqtest$', views.basicauth_dump_request_endpoint, name='aqtest'),
 ]
-
-
-

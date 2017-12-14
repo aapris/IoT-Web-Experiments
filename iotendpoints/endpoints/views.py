@@ -1,3 +1,4 @@
+import datetime
 import os
 import pytz
 import base64
@@ -162,6 +163,53 @@ def aqtest(request):
         res = _dump_request_endpoint(request)
         print('\n'.join(res))
         return HttpResponse("OK, I dumped HTTP request data to a file.")
+
+
+from influxdb import InfluxDBClient
+
+
+def get_iclient():
+    # using Http
+    iclient = InfluxDBClient(host='127.0.0.1', port=8086, database='mydb')
+    return iclient
+
+
+@csrf_exempt
+def espeasyhandler(request, version='0.0.0'):
+    """
+    echo -n "idcode=unique_id_here&sensor=bme280&id=0&data=Temperature=24.84,Humidity=52.05,Pressure=1002.50" | \
+       http -v --auth user:pass --form POST http://127.0.0.1:8000/espeasy/v1
+    """
+    uname, passwd, user = _basicauth(request)
+    p = request.POST
+    if user is None:
+        return HttpResponse("Authentication failure", status=401)
+    idcode = p.get('idcode')
+    sensor = p.get('sensor')
+    data = p.get('data')
+    _id = p.get('id')
+    if None in [idcode, sensor, data]:
+        return HttpResponse("idcode, sensor and/or data is missing in request form data", status=400)
+    meas = '{}-{}'.format(p.get('idcode', '000'), p.get('sensor', '000'))
+    json_body = [
+        {
+            "measurement": meas,
+            "tags": {
+                "dev-id": p['idcode'],
+                "sensor": p['sensor'],
+            },
+            "time": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "fields": {}
+        }
+    ]
+    data = p.get('data', '').strip()
+    json_body[0]['fields'] = dict([tuple(x.split('=')) for x in data.split(',')])
+    # import json; print(json.dumps(json_body, indent=1)); print(data)
+    iclient = get_iclient()
+    iclient.write_points(json_body)
+    response = HttpResponse("ok")
+    return response
+
 
 
 @csrf_exempt
