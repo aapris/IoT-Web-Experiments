@@ -2,6 +2,7 @@ import datetime
 import os
 import pytz
 import base64
+import influxdb
 # from django.shortcuts import render
 from django.conf import settings
 from django.http import HttpResponse
@@ -147,7 +148,6 @@ def aqtest(request):
     Dump a HttpRequest to files in a directory.
     """
     uname, passwd, user = _basicauth(request)
-    #print(uname, passwd, user)
 
     if user is None:
         # Either they did not provide an authorization header or
@@ -165,12 +165,9 @@ def aqtest(request):
         return HttpResponse("OK, I dumped HTTP request data to a file.")
 
 
-from influxdb import InfluxDBClient
-
-
-def get_iclient():
+def get_iclient(host='127.0.0.1', port=8086, database='mydb'):
     # using Http
-    iclient = InfluxDBClient(host='127.0.0.1', port=8086, database='mydb')
+    iclient = influxdb.InfluxDBClient(host=host, port=port, database=database)
     return iclient
 
 
@@ -187,7 +184,6 @@ def espeasyhandler(request, version='0.0.0'):
     idcode = p.get('idcode')
     sensor = p.get('sensor')
     data = p.get('data').strip()
-    _id = p.get('id')
     if None in [idcode, sensor, data]:
         return HttpResponse("idcode, sensor and/or data is missing in request form data", status=400)
     meas = '{}'.format(sensor)
@@ -211,6 +207,45 @@ def espeasyhandler(request, version='0.0.0'):
     response = HttpResponse("ok")
     return response
 
+
+@csrf_exempt
+def fmiaqhandler(request, version='0.0.0'):
+    """
+    echo -n "sensor=fmi_pm&idcode=fmiburk_001&data=pm2_5%3D0.54%2Cpm2_5_10%3D0.00%2Cair_temp%3D22.79%2Cair_humi%3D24.36%2Ccase_temp%3D26.66" | \
+       http -v --auth user:pass --form POST http://127.0.0.1:8000/fmiaq/v1
+    """
+    uname, passwd, user = _basicauth(request)
+    p = request.POST
+    if user is None:
+        return HttpResponse("Authentication failure", status=401)
+    idcode = p.get('idcode')
+    sensor = p.get('sensor')
+    data = p.get('data')
+    if None in [idcode, sensor, data]:
+        return HttpResponse("idcode, sensor and/or data is missing in request form data", status=400)
+    meas = 'fmiburk'
+    json_body = [
+        {
+            "measurement": meas,
+            "tags": {
+                "dev-id": p['idcode'],
+                # "sensor": p['sensor'],
+            },
+            "time": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "fields": {}
+        }
+    ]
+    data = p.get('data', '').strip()
+    json_body[0]['fields'] = dict([tuple(x.split('=')) for x in data.split(',')])
+    # import json; print(json.dumps(json_body, indent=1)); print(data)
+    try:
+        iclient = get_iclient(database='airquality')
+        iclient.write_points(json_body)
+    except influxdb.exceptions.InfluxDBClientError as err:
+        print(str(err))
+        return HttpResponse(str(err), status=500)
+    response = HttpResponse("ok")
+    return response
 
 
 @csrf_exempt
