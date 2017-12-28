@@ -236,7 +236,10 @@ def fmiaqhandler(request, version='0.0.0'):
         }
     ]
     data = p.get('data', '').strip()
-    json_body[0]['fields'] = dict([tuple(x.split('=')) for x in data.split(',')])
+    a = dict([tuple(x.split('=')) for x in data.split(',')])
+    for k in a.keys():
+        a[k] = float(a[k])
+    json_body[0]['fields'] = a
     # import json; print(json.dumps(json_body, indent=1)); print(data)
     try:
         iclient = get_iclient(database='airquality')
