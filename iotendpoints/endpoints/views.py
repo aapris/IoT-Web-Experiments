@@ -186,24 +186,25 @@ def espeasyhandler(request, version='0.0.0'):
         return HttpResponse("Authentication failure", status=401)
     idcode = p.get('idcode')
     sensor = p.get('sensor')
-    data = p.get('data')
+    data = p.get('data').strip()
     _id = p.get('id')
     if None in [idcode, sensor, data]:
         return HttpResponse("idcode, sensor and/or data is missing in request form data", status=400)
-    meas = '{}-{}'.format(p.get('idcode', '000'), p.get('sensor', '000'))
+    meas = '{}'.format(sensor)
     json_body = [
         {
             "measurement": meas,
             "tags": {
-                "dev-id": p['idcode'],
-                "sensor": p['sensor'],
+                "dev-id": idcode,
             },
             "time": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "fields": {}
         }
     ]
-    data = p.get('data', '').strip()
-    json_body[0]['fields'] = dict([tuple(x.split('=')) for x in data.split(',')])
+    a = dict([tuple(x.split('=')) for x in data.split(',')])
+    for k in a.keys(): 
+        a[k] = float(a[k])
+    json_body[0]['fields'] = a
     # import json; print(json.dumps(json_body, indent=1)); print(data)
     iclient = get_iclient()
     iclient.write_points(json_body)
