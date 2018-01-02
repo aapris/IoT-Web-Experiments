@@ -1,8 +1,10 @@
 import datetime
+import json
 import os
 import pytz
 import base64
 import influxdb
+from dateutil.parser import parse
 # from django.shortcuts import render
 from django.conf import settings
 from django.http import HttpResponse
@@ -243,6 +245,56 @@ def fmiaqhandler(request, version='0.0.0'):
     # import json; print(json.dumps(json_body, indent=1)); print(data)
     try:
         iclient = get_iclient(database='airquality')
+        iclient.write_points(json_body)
+    except influxdb.exceptions.InfluxDBClientError as err:
+        print(str(err))
+        return HttpResponse(str(err), status=500)
+    response = HttpResponse("ok")
+    return response
+
+
+def parse_sentilo_data(data):
+    json_body = []
+    for item in data['sensors']:
+        ts = parse(item['observations'][0]['timestamp'])
+        dev_id = item['sensor'][0:-2]
+        if item['sensor'].endswith('N'):
+            measurement = {
+                "measurement": 'LAeq',
+                "tags": {
+                    "dev-id": dev_id,  # leave out sensor type
+                },
+                "time": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "fields": {
+                    'dBA': float(item['observations'][0]['value'])
+                }
+            }
+            json_body.append(measurement)
+        if item['sensor'].endswith('S'):
+            cnt = 0
+            for val in item['observations'][0]['value'].split(';'):
+                measurement = {
+                    "measurement": 'LAeq1s',
+                    "tags": {
+                        "dev-id": dev_id,  # leave out sensor type
+                    },
+                    "time": (ts - datetime.timedelta(seconds=cnt)).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                    "fields": {
+                        'dBA': float(val.split(',')[0])
+                    }
+                }
+                cnt += 1
+                json_body.append(measurement)
+    return json_body
+
+
+@csrf_exempt
+def sentilohandler(request, version='0.0.0'):
+    data = json.loads(request.body)
+    json_body = parse_sentilo_data(data)
+    # print(json.dumps(json_body, indent=1))
+    try:
+        iclient = get_iclient(database='sentilo')
         iclient.write_points(json_body)
     except influxdb.exceptions.InfluxDBClientError as err:
         print(str(err))
