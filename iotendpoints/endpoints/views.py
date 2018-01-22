@@ -256,7 +256,7 @@ def fmiaqhandler(request, version='0.0.0'):
 def parse_sentilo_data(data):
     json_body = []
     for item in data['sensors']:
-        ts = parse(item['observations'][0]['timestamp'])
+        ts = parse(item['observations'][0]['timestamp'], dayfirst=True)
         dev_id = item['sensor'][0:-2]
         if item['sensor'].endswith('N'):
             measurement = {
@@ -290,8 +290,10 @@ def parse_sentilo_data(data):
 
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
-    data = json.loads(request.body)
+    data = json.loads(request.body.decode('utf-8'))
     json_body = parse_sentilo_data(data)
+    with open('/tmp/sentilodata.log', 'at') as f:
+        f.write(json.dumps(json_body, indent=1) + '\n')
     # print(json.dumps(json_body, indent=1))
     try:
         iclient = get_iclient(database='sentilo')
