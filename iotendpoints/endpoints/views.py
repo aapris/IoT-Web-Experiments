@@ -17,6 +17,8 @@ from .tasks import handle_datapost
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
+ORION_URL_ROOT = 'http://docker.fvh.fi/v2'
+
 
 def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
@@ -288,26 +290,8 @@ def parse_sentilo_data(data):
     return json_body
 
 
-'''
-{
-  "id": "Vitoria-NoiseLevelObserved-2016-12-28T11:00:00_2016-12-28T12:00:00",
-  "type": "NoiseLevelObserved",
-  "location": {
-	"type": "Point",
-	"coordinates": [-2.6980, 42.8491]
-  },
-  "dateObserved": "2016-12-28T11:00:00/2016-12-28T12:00:00",
-  "measurand": [
-	"LAeq  | 67.8 | A-weighted, equivalent, sound level",
-	"LAmax | 94.5 | A-weighted, maximum, sound level",
-  ],
-  "LAeq": 67.8,
-  "LAmax": 94.5,
-  "sonometerClass": "2"
-}
-'''
-def parse_sentilo_to_ngsi(data):
-    device_id = data['sensors'][0]['sensor'][:-2] # 0 because they _should_ all be the same
+def parse_sentilo2ngsi(data):
+    device_id = data['sensors'][0]['sensor'][:-2] # all list items _should_ have same ID
     obs_type = 'NoiseLevelObserved'
     location = {
         "type": "Point",
@@ -318,32 +302,47 @@ def parse_sentilo_to_ngsi(data):
 
     dateObserved = None
     measurand = None
-    for m in data['sensors']:
+    for m in data['sensors']: # iterate to find LAeq aka "N" among params reported by sensor
         if 'N' in m['sensor'][-1]:
-            dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%S%Z").isoformat()
+            dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%SZ").isoformat()
             LAeq = float(m['observations'][0]['value'])
             measurand = "{} | {} | {}".format("LAeq", LAeq, "A-weighted, equivalent, sound level")
     if measurand:
         noiseLevelObserved_payload = {
-            "id": device_id + "-NoiseLevelObserved-" + dateObserved,
-            "type": obs_type,
-            "location": location,
-            "dateObserved": dateObserved,
-            "measurand": [
-                measurand
-            ],
-            "LAeq": LAeq,
-            "sonometerClass": sonometerClass
-        }
-        return {
-                    "id": device_id,
-                    "type": "Cesva-T120",
-                    "NoiseLevelObserved": {
-                        "type": "NoiseLevelObserved",
-                        "value": noiseLevelObserved_payload
-                    }
+            "id": device_id,
+            "type": "Cesva-T120",
+            "NoiseLevelObserved": {
+                "type": "NoiseLevelObserved",
+                "value": {
+                    "id": device_id + "-NoiseLevelObserved-" + dateObserved,
+                    "type": obs_type,
+                    "location": location,
+                    "dateObserved": dateObserved,
+                    "measurand": [
+                        measurand
+                    ],
+                    "LAeq": LAeq,
+                    "sonometerClass": sonometerClass
                 }
+            }
+        }
+        return  noiseLevelObserved_payload
     return None
+
+def push_ngsi_orion(data):
+    device_id = data['id']
+    resp = None
+    try:
+        # try to update a sensor reading...
+        resp = requests.patch('{}/entities/{}/attr/'.format(ORION_URL_ROOT, data['id']), json=data['NoiseLevelObserved'])
+    except Exception as e:
+        #log.error('Something went wrong! Exception: {}'.format(e))
+        print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
+
+    # ...if updating failed, the entity probably doesn't exist yet so create it
+    if resp.status_code != 204:
+        resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), json=data)
+    return resp
 
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
