@@ -79,7 +79,7 @@ def _dump_request_endpoint(request, user=None, postfix=None):
 @csrf_exempt
 def obscure_dump_request_endpoint(request):
     """
-    Dump a HttpRequest to files in a directory.    
+    Dump a HttpRequest to files in a directory.
     """
     res = _dump_request_endpoint(request)
     print('\n'.join(res))  # to console or stdout/stderr
@@ -89,7 +89,7 @@ def obscure_dump_request_endpoint(request):
 @csrf_exempt
 def digita_dump_request_endpoint(request):
     """
-    Dump a HttpRequest to files in a directory.    
+    Dump a HttpRequest to files in a directory.
     """
     res = _dump_request_endpoint(request)
     print('\n'.join(res))  # to console or stdout/stderr
@@ -200,7 +200,7 @@ def espeasyhandler(request, version='0.0.0'):
         }
     ]
     a = dict([tuple(x.split('=')) for x in data.split(',')])
-    for k in a.keys(): 
+    for k in a.keys():
         a[k] = float(a[k])
     json_body[0]['fields'] = a
     # import json; print(json.dumps(json_body, indent=1)); print(data)
@@ -287,6 +287,56 @@ def parse_sentilo_data(data):
                 json_body.append(measurement)
     return json_body
 
+
+'''
+{
+  "id": "Vitoria-NoiseLevelObserved-2016-12-28T11:00:00_2016-12-28T12:00:00",
+  "type": "NoiseLevelObserved",
+  "location": {
+	"type": "Point",
+	"coordinates": [-2.6980, 42.8491]
+  },
+  "dateObserved": "2016-12-28T11:00:00/2016-12-28T12:00:00",
+  "measurand": [
+	"LAeq  | 67.8 | A-weighted, equivalent, sound level",
+	"LAmax | 94.5 | A-weighted, maximum, sound level",
+  ],
+  "LAeq": 67.8,
+  "LAmax": 94.5,
+  "sonometerClass": "2"
+}
+'''
+def parse_sentilo_to_ngsi(data):
+    device_id = data['sensors'][0]['sensor'][:-2] # 0 because they _should_ all be the same
+    obs_type = 'NoiseLevelObserved'
+    location = {
+        "type": "Point",
+        "coordinates": [0,0]
+    } # TODO
+    # address = ""
+    sonometerClass = "1"
+
+    dateObserved = None
+    measurand = None
+    for m in data['sensors']:
+        if 'N' in m['sensor'][-1]:
+            dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%S%Z").isoformat()
+            LAeq = float(m['observations'][0]['value'])
+            measurand = "{} | {} | {}".format("LAeq", LAeq, "A-weighted, equivalent, sound level")
+    if measurand:
+        json_payload = {
+            "id": device_id,
+            "type": obs_type,
+            "location": location,
+            "dateObserved": dateObserved,
+            "measurand": [
+                measurand
+            ],
+            "LAeq": LAeq,
+            "sonometerClass": sonometerClass
+        }
+        return json_payload
+    return None
 
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
