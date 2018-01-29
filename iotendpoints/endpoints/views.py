@@ -324,8 +324,8 @@ def parse_sentilo_to_ngsi(data):
             LAeq = float(m['observations'][0]['value'])
             measurand = "{} | {} | {}".format("LAeq", LAeq, "A-weighted, equivalent, sound level")
     if measurand:
-        json_payload = {
-            "id": device_id,
+        noiseLevelObserved_payload = {
+            "id": device_id + "-NoiseLevelObserved-" + dateObserved,
             "type": obs_type,
             "location": location,
             "dateObserved": dateObserved,
@@ -335,7 +335,14 @@ def parse_sentilo_to_ngsi(data):
             "LAeq": LAeq,
             "sonometerClass": sonometerClass
         }
-        return json_payload
+        return {
+                    "id": device_id,
+                    "type": "Cesva-T120",
+                    "NoiseLevelObserved": {
+                        "type": "NoiseLevelObserved",
+                        "value": noiseLevelObserved_payload
+                    }
+                }
     return None
 
 @csrf_exempt
