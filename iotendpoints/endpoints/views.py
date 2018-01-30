@@ -333,14 +333,14 @@ def push_ngsi_orion(data):
     device_id = data['id']
     resp = None
     try:
-        # try to update a sensor reading...
-        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), json=data['NoiseLevelObserved'])
+        # try to update the entity...
+        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), json={'NoiseLevelObserved': data['NoiseLevelObserved']})
     except Exception as e:
         #log.error('Something went wrong! Exception: {}'.format(e))
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
 
     # ...if updating failed, the entity probably doesn't exist yet so create it
-    if resp and (resp.status_code != 204):
+    if not resp or (resp.status_code != 204):
         resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), json=data)
     return resp
 
@@ -357,8 +357,13 @@ def sentilohandler(request, version='0.0.0'):
     except influxdb.exceptions.InfluxDBClientError as err:
         print(str(err))
         return HttpResponse(str(err), status=500)
-    response = HttpResponse("ok")
-    return response
+    influx_response = HttpResponse("ok")
+
+    #parse to NGSI format and push to Orion
+    ngsi_json = parse_sentilo2ngsi(data)
+    ngsi_response = push_ngsi_orion(ngsi_json)
+
+    return influx_response
 
 
 @csrf_exempt
