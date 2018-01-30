@@ -304,7 +304,7 @@ def parse_sentilo2ngsi(data):
     measurand = None
     for m in data['sensors']: # iterate to find LAeq aka "N" among params reported by sensor
         if 'N' in m['sensor'][-1]:
-            dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%SZ").isoformat()
+            dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%S%Z").isoformat()
             LAeq = float(m['observations'][0]['value'])
             measurand = "{} | {} | {}".format("LAeq", LAeq, "A-weighted, equivalent, sound level")
     if measurand:
@@ -326,7 +326,7 @@ def parse_sentilo2ngsi(data):
                 }
             }
         }
-        return  noiseLevelObserved_payload
+        return noiseLevelObserved_payload
     return None
 
 def push_ngsi_orion(data):
@@ -334,7 +334,7 @@ def push_ngsi_orion(data):
     resp = None
     try:
         # try to update a sensor reading...
-        resp = requests.patch('{}/entities/{}/attr/'.format(ORION_URL_ROOT, data['id']), json=data['NoiseLevelObserved'])
+        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), json=data['NoiseLevelObserved'])
     except Exception as e:
         #log.error('Something went wrong! Exception: {}'.format(e))
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
