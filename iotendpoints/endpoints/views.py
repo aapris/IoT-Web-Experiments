@@ -310,7 +310,7 @@ def parse_sentilo2ngsi(data):
     if measurand:
         noiseLevelObserved_payload = {
             "id": device_id,
-            "type": "Cesva-T120",
+            "type": "Cesva-TA120",
             "NoiseLevelObserved": {
                 "type": "NoiseLevelObserved",
                 "value": {
