@@ -340,7 +340,7 @@ def push_ngsi_orion(data):
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
 
     # ...if updating failed, the entity probably doesn't exist yet so create it
-    if resp.status_code != 204:
+    if resp and (resp.status_code != 204):
         resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), json=data)
     return resp
 
