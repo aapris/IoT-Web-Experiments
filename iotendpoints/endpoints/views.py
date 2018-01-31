@@ -4,6 +4,7 @@ import os
 import pytz
 import base64
 import influxdb
+import requests
 from dateutil.parser import parse
 # from django.shortcuts import render
 from django.conf import settings
@@ -304,7 +305,9 @@ def parse_sentilo2ngsi(data):
     measurand = None
     for m in data['sensors']: # iterate to find LAeq aka "N" among params reported by sensor
         if 'N' in m['sensor'][-1]:
-            dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%S%Z").isoformat()
+            ts = parse(m['observations'][0]['timestamp'], dayfirst=True)
+            dateObserved = ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            # dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%S%Z").isoformat()
             LAeq = float(m['observations'][0]['value'])
             measurand = "{} | {} | {}".format("LAeq", LAeq, "A-weighted, equivalent, sound level")
     if measurand:
