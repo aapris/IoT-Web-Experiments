@@ -256,7 +256,12 @@ def fmiaqhandler(request, version='0.0.0'):
 def parse_sentilo_data(data):
     json_body = []
     for item in data['sensors']:
-        ts = parse(item['observations'][0]['timestamp'], dayfirst=True)
+        ts_str = item['observations'][0].get('timestamp')
+        if ts_str is not None:
+            ts = parse(item['observations'][0]['timestamp'], dayfirst=True)
+        else:
+            ts = datetime.datetime.utcnow()
+            print(ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ data without timestamp!"))
         dev_id = item['sensor'][0:-2]
         if item['sensor'].endswith('N'):
             measurement = {
@@ -290,9 +295,20 @@ def parse_sentilo_data(data):
 
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
-    data = json.loads(request.body.decode('utf-8'))
-    json_body = parse_sentilo_data(data)
+    rawbody =  request.body.decode('utf-8')
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except ValueError as err:
+        print(str(err))
+        with open('/tmp/sentiloraw.log', 'at') as f:
+            f.write(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ' SERVER ERROR with data\n')
+            f.write(rawbody)
+        raise
+        return HttpResponse('SERVER ERROR: ' + str(err), status=500)
     with open('/tmp/sentilodata.log', 'at') as f:
+        f.write(json.dumps(data, indent=1) + '\n')
+    json_body = parse_sentilo_data(data)
+    with open('/tmp/sentiloparsed.log', 'at') as f:
         f.write(json.dumps(json_body, indent=1) + '\n')
     # print(json.dumps(json_body, indent=1))
     try:
@@ -300,6 +316,7 @@ def sentilohandler(request, version='0.0.0'):
         iclient.write_points(json_body)
     except influxdb.exceptions.InfluxDBClientError as err:
         print(str(err))
+        raise
         return HttpResponse(str(err), status=500)
     response = HttpResponse("ok")
     return response
