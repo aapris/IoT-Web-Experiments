@@ -18,7 +18,10 @@ from .tasks import handle_datapost
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
-ORION_URL_ROOT = 'http://docker.fvh.fi/v2'
+# ORION_URL_ROOT = 'http://docker.fvh.fi/v2'
+ORION_URL_ROOT =  os.environ.get('ORION_URL_ROOT')
+ORION_USERNAME =  os.environ.get('ORION_USERNAME')
+ORION_PASSWORD =  os.environ.get('ORION_PASSWORD')
 
 
 def index(request):
@@ -332,20 +335,26 @@ def parse_sentilo2ngsi(data):
         return noiseLevelObserved_payload
     return None
 
+
 def push_ngsi_orion(data):
     device_id = data['id']
     resp = None
     try:
         # try to update the entity...
-        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), json={'NoiseLevelObserved': data['NoiseLevelObserved']})
+        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), 
+                auth=(ORION_USERNAME, ORION_PASSWORD),
+                json={'NoiseLevelObserved': data['NoiseLevelObserved']})
     except Exception as e:
         #log.error('Something went wrong! Exception: {}'.format(e))
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
 
     # ...if updating failed, the entity probably doesn't exist yet so create it
     if not resp or (resp.status_code != 204):
-        resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), json=data)
+        resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), 
+                auth=(ORION_USERNAME, ORION_PASSWORD),
+                json=data)
     return resp
+
 
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
