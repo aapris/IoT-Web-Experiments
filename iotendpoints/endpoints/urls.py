@@ -26,4 +26,5 @@ urlpatterns = [
     url(r'^espeasy/v1$', views.espeasyhandler, name='espeasyhandler'),
     url(r'^aqtest$', views.basicauth_dump_request_endpoint, name='aqtest'),
     url(r'^fmiaq/v1$', views.fmiaqhandler, name='fmiaqhandler'),
+    url(r'^noisesensor/v1$', views.noisesensorhandler, name='noisesensorhandler'),
 ]

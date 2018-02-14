@@ -322,6 +322,52 @@ def sentilohandler(request, version='0.0.0'):
     return response
 
 
+def parse_noisesensorv1_data(request):
+    json_body = []
+    ts = datetime.datetime.utcnow()
+    s = request.GET.get('1s', '')
+    dev_id = request.GET.get('mac')
+    if s != '':
+        svals = [int(x) for x in filter(None, s.split(','))]
+    else:
+        return HttpResponse('Broken data {}'.format(s[:10]), status=400)
+    cnt = 0
+    for val in svals:
+        measurement = {
+            "measurement": 'raw_pp',
+            "tags": {
+                "dev-id": dev_id,  # leave out sensor type
+            },
+            "time": (ts - datetime.timedelta(seconds=cnt)).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "fields": {
+                'raw': val
+            }
+        }
+        cnt += 1
+        json_body.append(measurement)
+    return json_body
+
+
+@csrf_exempt
+def noisesensorhandler(request, version='0.0.0'):
+    data = request.GET.get('1s', 'NO DATA')
+    with open('/tmp/noiseraw.log', 'at') as f:
+        f.write(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ' SERVER ERROR with data\n')
+        f.write(data)
+    json_body = parse_noisesensorv1_data(request)
+    # print(json.dumps(json_body, indent=1))
+    try:
+        iclient = get_iclient(database='noisesensor')
+        iclient.write_points(json_body)
+    except influxdb.exceptions.InfluxDBClientError as err:
+        print(str(err))
+        raise
+        return HttpResponse(str(err), status=500)
+    response = HttpResponse("ok")
+    return response
+
+
+
 @csrf_exempt
 def esphandler(request):
     """
