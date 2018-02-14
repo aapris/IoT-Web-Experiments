@@ -4,6 +4,7 @@ import os
 import pytz
 import base64
 import influxdb
+import requests
 from dateutil.parser import parse
 # from django.shortcuts import render
 from django.conf import settings
@@ -16,6 +17,11 @@ from .tasks import handle_datapost
 
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
+
+# ORION_URL_ROOT = 'http://docker.fvh.fi/v2'
+ORION_URL_ROOT =  os.environ.get('ORION_URL_ROOT')
+ORION_USERNAME =  os.environ.get('ORION_USERNAME')
+ORION_PASSWORD =  os.environ.get('ORION_PASSWORD')
 
 
 def index(request):
@@ -79,7 +85,7 @@ def _dump_request_endpoint(request, user=None, postfix=None):
 @csrf_exempt
 def obscure_dump_request_endpoint(request):
     """
-    Dump a HttpRequest to files in a directory.    
+    Dump a HttpRequest to files in a directory.
     """
     res = _dump_request_endpoint(request)
     print('\n'.join(res))  # to console or stdout/stderr
@@ -89,7 +95,7 @@ def obscure_dump_request_endpoint(request):
 @csrf_exempt
 def digita_dump_request_endpoint(request):
     """
-    Dump a HttpRequest to files in a directory.    
+    Dump a HttpRequest to files in a directory.
     """
     res = _dump_request_endpoint(request)
     print('\n'.join(res))  # to console or stdout/stderr
@@ -200,7 +206,7 @@ def espeasyhandler(request, version='0.0.0'):
         }
     ]
     a = dict([tuple(x.split('=')) for x in data.split(',')])
-    for k in a.keys(): 
+    for k in a.keys():
         a[k] = float(a[k])
     json_body[0]['fields'] = a
     # import json; print(json.dumps(json_body, indent=1)); print(data)
@@ -293,6 +299,68 @@ def parse_sentilo_data(data):
     return json_body
 
 
+def parse_sentilo2ngsi(data):
+    device_id = data['sensors'][0]['sensor'][:-2] # all list items _should_ have same ID
+    obs_type = 'NoiseLevelObserved'
+    location = {
+        "type": "Point",
+        "coordinates": [0,0]
+    } # TODO
+    # address = ""
+    sonometerClass = "1"
+
+    dateObserved = None
+    measurand = None
+    for m in data['sensors']: # iterate to find LAeq aka "N" among params reported by sensor
+        if 'N' in m['sensor'][-1]:
+            ts = parse(m['observations'][0]['timestamp'], dayfirst=True)
+            dateObserved = ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            # dateObserved = datetime.strptime(m['observations'][0]['timestamp'], "%d/%m/%YT%H:%M:%S%Z").isoformat()
+            LAeq = float(m['observations'][0]['value'])
+            measurand = "{} | {} | {}".format("LAeq", LAeq, "A-weighted, equivalent, sound level")
+    if measurand:
+        noiseLevelObserved_payload = {
+            "id": device_id,
+            "type": "Cesva-TA120",
+            "NoiseLevelObserved": {
+                "type": "NoiseLevelObserved",
+                "value": {
+                    "id": device_id + "-NoiseLevelObserved-" + dateObserved,
+                    "type": obs_type,
+                    "location": location,
+                    "dateObserved": dateObserved,
+                    "measurand": [
+                        measurand
+                    ],
+                    "LAeq": LAeq,
+                    "sonometerClass": sonometerClass
+                }
+            }
+        }
+        return noiseLevelObserved_payload
+    return None
+
+
+def push_ngsi_orion(data):
+    device_id = data['id']
+    resp = None
+    try:
+        # try to update the entity...
+        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), 
+                auth=(ORION_USERNAME, ORION_PASSWORD),
+                json={'NoiseLevelObserved': data['NoiseLevelObserved']})
+    except Exception as e:
+        #log.error('Something went wrong! Exception: {}'.format(e))
+        print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
+
+    # ...if updating failed, the entity probably doesn't exist yet so create it
+    if not resp or (resp.status_code != 204):
+        resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), 
+                auth=(ORION_USERNAME, ORION_PASSWORD),
+                json=data)
+    return resp
+
+
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
     rawbody =  request.body.decode('utf-8')
@@ -318,8 +386,13 @@ def sentilohandler(request, version='0.0.0'):
         print(str(err))
         raise
         return HttpResponse(str(err), status=500)
-    response = HttpResponse("ok")
-    return response
+    influx_response = HttpResponse("ok")
+
+    #parse to NGSI format and push to Orion
+    ngsi_json = parse_sentilo2ngsi(data)
+    ngsi_response = push_ngsi_orion(ngsi_json)
+
+    return influx_response
 
 
 def parse_noisesensorv1_data(request):
