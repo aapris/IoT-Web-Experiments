@@ -402,6 +402,7 @@ def parse_noisesensorv1_data(request):
     dev_id = request.GET.get('mac')
     if s != '':
         svals = [int(x) for x in filter(None, s.split(','))]
+        svals.reverse()
     else:
         return HttpResponse('Broken data {}'.format(s[:10]), status=400)
     cnt = 0
