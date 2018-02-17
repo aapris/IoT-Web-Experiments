@@ -283,7 +283,9 @@ def parse_sentilo_data(data):
             json_body.append(measurement)
         if item['sensor'].endswith('S'):
             cnt = 0
-            for val in item['observations'][0]['value'].split(';'):
+            secvals = item['observations'][0]['value'].split(';')
+            secvals.reverse()
+            for val in secvals:
                 measurement = {
                     "measurement": 'LAeq1s',
                     "tags": {
@@ -400,12 +402,24 @@ def parse_noisesensorv1_data(request):
     ts = datetime.datetime.utcnow()
     s = request.GET.get('1s', '')
     dev_id = request.GET.get('mac')
+    rssi = int(request.GET.get('rssi'))
     if s != '':
         svals = [int(x) for x in filter(None, s.split(','))]
         svals.reverse()
     else:
         return HttpResponse('Broken data {}'.format(s[:10]), status=400)
     cnt = 0
+    measurement = {
+        "measurement": 'rssi',
+        "tags": {
+            "dev-id": dev_id,  # leave out sensor type
+        },
+        "time": (ts - datetime.timedelta(seconds=cnt)).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "fields": {
+            'rssi': rssi
+        }
+    }
+    json_body.append(measurement)
     for val in svals:
         measurement = {
             "measurement": 'raw_pp',
@@ -418,7 +432,8 @@ def parse_noisesensorv1_data(request):
             }
         }
         cnt += 1
-        json_body.append(measurement)
+        if val > 0:
+            json_body.append(measurement)
     return json_body
 
 
