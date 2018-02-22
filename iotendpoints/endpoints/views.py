@@ -403,6 +403,7 @@ def parse_noisesensorv1_data(request):
     s = request.GET.get('1s', '')
     dev_id = request.GET.get('mac')
     rssi = int(request.GET.get('rssi'))
+    uptime = int(request.GET.get('uptime'))
     if s != '':
         svals = [int(x) for x in filter(None, s.split(','))]
         svals.reverse()
@@ -420,6 +421,18 @@ def parse_noisesensorv1_data(request):
         }
     }
     json_body.append(measurement)
+    if uptime:
+        measurement = {
+            "measurement": 'uptime',
+            "tags": {
+                "dev-id": dev_id,  # leave out sensor type
+            },
+            "time": (ts - datetime.timedelta(seconds=cnt)).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "fields": {
+                'uptime': uptime
+            }
+        }
+        json_body.append(measurement)
     for val in svals:
         measurement = {
             "measurement": 'raw_pp',
