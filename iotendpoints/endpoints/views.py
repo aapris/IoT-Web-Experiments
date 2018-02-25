@@ -403,7 +403,7 @@ def parse_noisesensorv1_data(request):
     s = request.GET.get('1s', '')
     dev_id = request.GET.get('mac')
     rssi = int(request.GET.get('rssi'))
-    uptime = int(request.GET.get('uptime'))
+    uptime = int(request.GET.get('uptime', 0))
     if s != '':
         svals = [int(x) for x in filter(None, s.split(','))]
         svals.reverse()
@@ -422,6 +422,7 @@ def parse_noisesensorv1_data(request):
     }
     json_body.append(measurement)
     if uptime:
+        uptime = uptime / 1000.0  # convert to seconds
         measurement = {
             "measurement": 'uptime',
             "tags": {
