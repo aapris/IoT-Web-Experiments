@@ -1,4 +1,5 @@
 import datetime
+import time
 import json
 import os
 import pytz
@@ -469,6 +470,31 @@ def noisesensorhandler(request, version='0.0.0'):
     response = HttpResponse("ok")
     return response
 
+
+@csrf_exempt
+def mapmytracks(request):
+    """
+    Dump a HttpRequest to files in a directory.
+    """
+    res = _dump_request_endpoint(request, postfix='mapmytracks')
+    print('\n'.join(res))  # to console or stdout/stderr
+    pl = request.POST.get('points', '').split()
+    points = [pl[x:x + 4] for x in range(0, len(pl), 4)]
+    for point in points:
+        lat, lon, alt, epoch = [float(x) for x in point]
+        ts = pytz.UTC.localize(datetime.datetime.utcfromtimestamp(epoch))
+        print(lat, lon, alt, epoch, ts)
+    req = request.POST.get('request', '')
+    if req == 'start_activity':
+        return HttpResponse("""<?xml version="1.0" encoding="UTF-8"?>
+            <message> <type>activity_started</type> <activity_id>9346</activity_id> </message>""")
+    elif req == 'update_activity':
+        return HttpResponse("""<?xml version="1.0" encoding="UTF-8"?>
+            <message> <type>activity_updated</type> </message>""")
+    elif req == 'upload_activity':
+        return HttpResponse("""<?xml version="1.0" encoding="UTF-8"?>
+            <message> <type>success</type> <id>12345678</id> </message>""")
+    return HttpResponse("OK, I dumped HTTP request data to a file.")
 
 
 @csrf_exempt
