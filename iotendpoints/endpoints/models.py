@@ -9,7 +9,7 @@ class Request(models.Model):
     """
     Metadata about Request.
     """
-    user = models.ForeignKey(User, blank=True, null=True, verbose_name='Sender')
+    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE, verbose_name='Sender')
     status = models.CharField(max_length=40, default="NEW",
                               choices=(("NEW", "New"),
                                        ("NOTIFIED", "Notified"),
