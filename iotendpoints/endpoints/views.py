@@ -18,9 +18,9 @@ from .models import Request
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
-ORION_URL_ROOT =  os.environ.get('ORION_URL_ROOT')
-ORION_USERNAME =  os.environ.get('ORION_USERNAME')
-ORION_PASSWORD =  os.environ.get('ORION_PASSWORD')
+ORION_URL_ROOT = os.environ.get('ORION_URL_ROOT')
+ORION_USERNAME = os.environ.get('ORION_USERNAME')
+ORION_PASSWORD = os.environ.get('ORION_PASSWORD')
 
 
 def index(request):
@@ -33,16 +33,16 @@ def _dump_request_endpoint(request, user=None, postfix=None):
     """
     now = timezone.now().astimezone(pytz.utc)
     r = Request(method=request.method, user=user)
-    r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
     if postfix:
-        postfix = re.sub("[^a-zA-Z0-9]", "", postfix)
-        r.path += '-' + postfix
+        r.path = re.sub("[^a-zA-Z0-9]", "", postfix)
+    else:
+        r.path = ''
+    r.path = os.path.join(r.path, now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
     fpath = os.path.join(settings.MEDIA_ROOT, r.path)
     os.makedirs(fpath, exist_ok=True)
     fname = os.path.join(fpath, 'request_body.txt')
     with open(fname, 'wb') as destination:
         destination.write(request.body)
-
     res = []
     res.append('Request Method: {}'.format(request.method))
     res.append('Request full path: {}'.format(request.get_full_path()))
@@ -97,7 +97,7 @@ def digita_dump_request_endpoint(request):
     """
     Dump a HttpRequest to files in a directory.
     """
-    res = _dump_request_endpoint(request)
+    res = _dump_request_endpoint(request, postfix='digita')
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped Digita LoRa HTTP request data to a file.")
 
