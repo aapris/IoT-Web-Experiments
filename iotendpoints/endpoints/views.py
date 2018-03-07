@@ -23,6 +23,18 @@ ORION_USERNAME = os.environ.get('ORION_USERNAME')
 ORION_PASSWORD = os.environ.get('ORION_PASSWORD')
 
 
+def create_path(postfix):
+    now = timezone.now().astimezone(pytz.utc)
+    if postfix:
+        path = re.sub("[^a-zA-Z0-9]", "", postfix)
+    else:
+        path = ''
+    path = os.path.join(path, now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
+    fpath = os.path.join(settings.MEDIA_ROOT, path)
+    os.makedirs(fpath, exist_ok=True)
+    return fpath
+
+
 def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
 
@@ -31,15 +43,8 @@ def _dump_request_endpoint(request, user=None, postfix=None):
     """
     Dump a HttpRequest to files in a directory.
     """
-    now = timezone.now().astimezone(pytz.utc)
     r = Request(method=request.method, user=user)
-    if postfix:
-        r.path = re.sub("[^a-zA-Z0-9]", "", postfix)
-    else:
-        r.path = ''
-    r.path = os.path.join(r.path, now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
-    fpath = os.path.join(settings.MEDIA_ROOT, r.path)
-    os.makedirs(fpath, exist_ok=True)
+    fpath = create_path(postfix)
     fname = os.path.join(fpath, 'request_body.txt')
     with open(fname, 'wb') as destination:
         destination.write(request.body)
@@ -100,6 +105,24 @@ def digita_dump_request_endpoint(request):
     res = _dump_request_endpoint(request, postfix='digita')
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped Digita LoRa HTTP request data to a file.")
+
+
+@csrf_exempt
+def loranethandler(request):
+    """
+    Dump a HttpRequest to files in a directory.
+    """
+    res = _dump_request_endpoint(request, postfix='loranet')
+    data = json.loads(request.body)
+    devaddr = data['meta']['device_addr']
+    times = str(data['meta']['time'])
+    now = timezone.now().astimezone(pytz.utc)
+    path = os.path.join(settings.MEDIA_ROOT, 'loranet', now.strftime('%Y-%m-%d'), devaddr)
+    os.makedirs(path, exist_ok=True)
+    fpath = os.path.join(path, now.strftime('%Y%m%dT%H%M%S.%fZ.json'))
+    with open(fpath, 'wt') as destination:
+        destination.write(json.dumps(data, indent=1))
+    return HttpResponse("OK, I dumped HTTP request data to a file.")
 
 
 @csrf_exempt

@@ -15,12 +15,14 @@ if DUMMY_OBSCURE_URL == OBSCURE_URL:
 OBSCURE_URL_PATTERN = r'^{}(.*)$'.format(os.environ.get('OBSCURE_URL', OBSCURE_URL))
 DIGITA_URL_PATTERN = r'^{}$'.format(os.environ.get('DIGITA_URL', OBSCURE_URL))
 SENTILO_URL_PATTERN = r'^{}$'.format(os.environ.get('SENTILO_URL', OBSCURE_URL))
+LORANET_URL_PATTERN = r'^{}$'.format(os.environ.get('LORANET_URL', OBSCURE_URL))
 
 urlpatterns = [
     url(r'^$', views.index, name='index'),
     url(OBSCURE_URL_PATTERN, views.obscure_dump_request_endpoint, name='dump_request'),
     url(DIGITA_URL_PATTERN, views.digita_dump_request_endpoint, name='digita_dump_request'),
     url(SENTILO_URL_PATTERN, views.sentilohandler, name='sentilohandler'),
+    url(LORANET_URL_PATTERN, views.loranethandler, name='loranethandler'),
     url(r'^basicauth$', views.basicauth_dump_request_endpoint, name='basicauth_dump_request'),
     url(r'^esp$', views.esphandler, name='esphandler'),
     url(r'^espeasy/v1$', views.espeasyhandler, name='espeasyhandler'),
