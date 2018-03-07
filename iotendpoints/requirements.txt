@@ -1,4 +1,4 @@
-django>=1.11,<2.0
+django>=2.0,<2.1
 psycopg2
 gunicorn
 celery
@@ -6,3 +6,4 @@ astral
 pytz
 python-dateutil
 requests
+influxdb
