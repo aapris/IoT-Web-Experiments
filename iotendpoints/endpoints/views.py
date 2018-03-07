@@ -1,25 +1,23 @@
 import datetime
-import time
 import json
 import os
+import re
 import pytz
 import base64
 import influxdb
 import requests
 from dateutil.parser import parse
-# from django.shortcuts import render
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from endpoints.models import Request
 from django.contrib.auth import authenticate
 from .tasks import handle_datapost
+from .models import Request
 
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
-# ORION_URL_ROOT = 'http://docker.fvh.fi/v2'
 ORION_URL_ROOT =  os.environ.get('ORION_URL_ROOT')
 ORION_USERNAME =  os.environ.get('ORION_USERNAME')
 ORION_PASSWORD =  os.environ.get('ORION_PASSWORD')
@@ -37,6 +35,7 @@ def _dump_request_endpoint(request, user=None, postfix=None):
     r = Request(method=request.method, user=user)
     r.path = os.path.join(now.strftime('%Y-%m-%d'), now.strftime('%Y%m%dT%H%M%S.%fZ'))
     if postfix:
+        postfix = re.sub("[^a-zA-Z0-9]", "", postfix)
         r.path += '-' + postfix
     fpath = os.path.join(settings.MEDIA_ROOT, r.path)
     os.makedirs(fpath, exist_ok=True)
@@ -84,11 +83,11 @@ def _dump_request_endpoint(request, user=None, postfix=None):
 
 
 @csrf_exempt
-def obscure_dump_request_endpoint(request):
+def obscure_dump_request_endpoint(request, postfix):
     """
     Dump a HttpRequest to files in a directory.
     """
-    res = _dump_request_endpoint(request)
+    res = _dump_request_endpoint(request, postfix=postfix)
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped HTTP request data to a file.")
 

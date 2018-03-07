@@ -12,7 +12,7 @@ SENTILO_URL = os.environ.get('SENTILO_URL', DUMMY_OBSCURE_URL)
 if DUMMY_OBSCURE_URL == OBSCURE_URL:
     print("Warning: you should set OBSCURE_URL environment variable in this env\n\n")
 
-OBSCURE_URL_PATTERN = r'^{}$'.format(os.environ.get('OBSCURE_URL', OBSCURE_URL))
+OBSCURE_URL_PATTERN = r'^{}(.*)$'.format(os.environ.get('OBSCURE_URL', OBSCURE_URL))
 DIGITA_URL_PATTERN = r'^{}$'.format(os.environ.get('DIGITA_URL', OBSCURE_URL))
 SENTILO_URL_PATTERN = r'^{}$'.format(os.environ.get('SENTILO_URL', OBSCURE_URL))
 
