@@ -113,7 +113,7 @@ def loranethandler(request):
     Dump a HttpRequest to files in a directory.
     """
     res = _dump_request_endpoint(request, postfix='loranet')
-    data = json.loads(request.body)
+    data = json.loads(request.body.decode('utf-8'))
     devaddr = data['meta']['device_addr']
     times = str(data['meta']['time'])
     now = timezone.now().astimezone(pytz.utc)
