@@ -38,6 +38,8 @@ def create_path(postfix):
 def create_influxdb_obj(dev_id, measurement, fields, timestamp=None):
     if timestamp is None:
         timestamp = datetime.datetime.utcnow()
+    for k, v in fields.items(): 
+        fields[k] = float(v)
     measurement = {
         "measurement": measurement,
         "tags": {
@@ -144,16 +146,16 @@ def loranethandler(request):
         if not isinstance(sensordata, dict):
             return HttpResponse("OK: dumped data to a file.")
         keys = list(sensordata.keys())
-        print(keys)
+        # print(keys)
         keys.sort()
         keys_str = '-'.join(keys)
     except json.decoder.JSONDecodeError as err:
-        print('{}\n{}'.format(str(err), data_str))
+        # print('{}\n{}'.format(str(err), data_str))
         raise
     ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
     json_body = [create_influxdb_obj(devaddr, keys_str, sensordata, ts)]
-    print(data_str, sensordata)
-    print(json.dumps(json_body, indent=1))
+    # print(data_str, sensordata)
+    # print(json.dumps(json_body, indent=1))
     iclient = get_iclient(database='loranet')
     iclient.write_points(json_body)
     return HttpResponse("OK: dumped data to a file and into InfluxDB.")
