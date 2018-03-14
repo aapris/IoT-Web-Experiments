@@ -35,6 +35,20 @@ def create_path(postfix):
     return fpath
 
 
+def create_influxdb_obj(dev_id, measurement, fields, timestamp=None):
+    if timestamp is None:
+        timestamp = datetime.datetime.utcnow()
+    measurement = {
+        "measurement": measurement,
+        "tags": {
+            "dev-id": dev_id,
+        },
+        "time": timestamp.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "fields": fields
+    }
+    return measurement
+
+
 def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
 
@@ -122,7 +136,27 @@ def loranethandler(request):
     fpath = os.path.join(path, now.strftime('%Y%m%dT%H%M%S.%fZ.json'))
     with open(fpath, 'wt') as destination:
         destination.write(json.dumps(data, indent=1))
-    return HttpResponse("OK, I dumped HTTP request data to a file.")
+    payload = data['params']['payload'].encode()
+    data_str = base64.decodebytes(payload).decode('utf8')
+
+    try:
+        sensordata = json.loads(data_str)
+        if not isinstance(sensordata, dict):
+            return HttpResponse("OK: dumped data to a file.")
+        keys = list(sensordata.keys())
+        print(keys)
+        keys.sort()
+        keys_str = '-'.join(keys)
+    except json.decoder.JSONDecodeError as err:
+        print('{}\n{}'.format(str(err), data_str))
+        raise
+    ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
+    json_body = [create_influxdb_obj(devaddr, keys_str, sensordata, ts)]
+    print(data_str, sensordata)
+    print(json.dumps(json_body, indent=1))
+    iclient = get_iclient(database='loranet')
+    iclient.write_points(json_body)
+    return HttpResponse("OK: dumped data to a file and into InfluxDB.")
 
 
 @csrf_exempt
