@@ -29,7 +29,6 @@ class Plugin(BasePlugin):
     """
     name = 'demo'
     viewname = 'demohandler'
-    in_use = False
 
     def __init__(self):
         """Check that `ENV_NAME` is in env variables."""
