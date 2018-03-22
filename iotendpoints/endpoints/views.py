@@ -239,43 +239,6 @@ def get_iclient(host='127.0.0.1', port=8086, database='mydb'):
 
 
 @csrf_exempt
-def espeasyhandler(request, version='0.0.0'):
-    """
-    echo -n "idcode=unique_id_here&sensor=bme280&id=0&data=Temperature=24.84,Humidity=52.05,Pressure=1002.50" | \
-       http -v --auth user:pass --form POST http://127.0.0.1:8000/espeasy/v1
-    """
-    uname, passwd, user = _basicauth(request)
-    p = request.POST
-    if user is None:
-        return HttpResponse("Authentication failure", status=401)
-    idcode = p.get('idcode')
-    sensor = p.get('sensor')
-    data = p.get('data').strip()
-    if None in [idcode, sensor, data]:
-        return HttpResponse("idcode, sensor and/or data is missing in request form data", status=400)
-    meas = '{}'.format(sensor)
-    json_body = [
-        {
-            "measurement": meas,
-            "tags": {
-                "dev-id": idcode,
-            },
-            "time": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            "fields": {}
-        }
-    ]
-    a = dict([tuple(x.split('=')) for x in data.split(',')])
-    for k in a.keys():
-        a[k] = float(a[k])
-    json_body[0]['fields'] = a
-    # import json; print(json.dumps(json_body, indent=1)); print(data)
-    iclient = get_iclient()
-    iclient.write_points(json_body)
-    response = HttpResponse("ok")
-    return response
-
-
-@csrf_exempt
 def fmiaqhandler(request, version='0.0.0'):
     """
     echo -n "sensor=fmi_pm&idcode=fmiburk_001&data=pm2_5%3D0.54%2Cpm2_5_10%3D0.00%2Cair_temp%3D22.79%2Cair_humi%3D24.36%2Ccase_temp%3D26.66" | \
@@ -553,12 +516,3 @@ def mapmytracks(request):
         return HttpResponse("""<?xml version="1.0" encoding="UTF-8"?>
             <message> <type>success</type> <id>12345678</id> </message>""")
     return HttpResponse("OK, I dumped HTTP request data to a file.")
-
-
-@csrf_exempt
-def esphandler(request):
-    """
-    Dump a HttpRequest to files in a directory.
-    """
-    handle_datapost.delay({}, {})
-    return HttpResponse("OK")
