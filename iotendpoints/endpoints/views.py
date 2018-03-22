@@ -124,44 +124,6 @@ def digita_dump_request_endpoint(request):
 
 
 @csrf_exempt
-def loranethandler(request):
-    """
-    Dump a HttpRequest to files in a directory.
-    """
-    res = _dump_request_endpoint(request, postfix='loranet')
-    data = json.loads(request.body.decode('utf-8'))
-    devaddr = data['meta']['device_addr']
-    times = str(data['meta']['time'])
-    now = timezone.now().astimezone(pytz.utc)
-    path = os.path.join(settings.MEDIA_ROOT, 'loranet', now.strftime('%Y-%m-%d'), devaddr)
-    os.makedirs(path, exist_ok=True)
-    fpath = os.path.join(path, now.strftime('%Y%m%dT%H%M%S.%fZ.json'))
-    with open(fpath, 'wt') as destination:
-        destination.write(json.dumps(data, indent=1))
-    payload = data['params']['payload'].encode()
-    data_str = base64.decodebytes(payload).decode('utf8')
-
-    try:
-        sensordata = json.loads(data_str)
-        if not isinstance(sensordata, dict):
-            return HttpResponse("OK: dumped data to a file.")
-        keys = list(sensordata.keys())
-        # print(keys)
-        keys.sort()
-        keys_str = '-'.join(keys)
-    except json.decoder.JSONDecodeError as err:
-        # print('{}\n{}'.format(str(err), data_str))
-        raise
-    ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
-    json_body = [create_influxdb_obj(devaddr, keys_str, sensordata, ts)]
-    # print(data_str, sensordata)
-    # print(json.dumps(json_body, indent=1))
-    iclient = get_iclient(database='loranet')
-    iclient.write_points(json_body)
-    return HttpResponse("OK: dumped data to a file and into InfluxDB.")
-
-
-@csrf_exempt
 def sentilo_dump_request_endpoint(request):
     """
     Dump a HttpRequest to files in a directory.
