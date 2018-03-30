@@ -19,10 +19,11 @@ from django.utils import timezone
 from influxdb.exceptions import InfluxDBClientError
 from endpoints.utils import BasePlugin
 from endpoints.utils import dump_request, get_influxdb_client, create_influxdb_obj
+from endpoints.utils import get_setting
 
 ENV_NAME = 'EVERYNET_URL'
-URL = os.environ.get(ENV_NAME)
-EVERYNET_DB = os.environ.get('EVERYNET_DB', 'everynet')
+URL = get_setting(ENV_NAME)
+EVERYNET_DB = get_setting('EVERYNET_DB', 'everynet')
 logger = logging.getLogger(__name__)
 
 

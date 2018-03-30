@@ -18,9 +18,10 @@ from django.conf.urls import url
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from endpoints.utils import BasePlugin
+from endpoints.utils import get_setting
 
 ENV_NAME = 'DEMO_URL'
-URL = os.environ.get(ENV_NAME)
+URL = get_setting(ENV_NAME)
 
 
 class Plugin(BasePlugin):
