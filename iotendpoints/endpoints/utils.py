@@ -6,13 +6,40 @@ import influxdb
 import pytz
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 from .models import Request
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
 
+def get_setting(key, default=None):
+    """
+    Return 'key' from os.environ or Django settings if found or None.
+    If key is defined in more than 1 place, raise error.
+
+    :param str key: Setting name
+    :return: Setting value
+    :raises ImproperlyConfigured: if the key is defined more than once
+    """
+    from_env = os.environ.get(key, None)
+    from_settings = getattr(settings, key, None)
+    if from_env and from_settings:
+        err_msg = '{} is configured twice: {} in ENV and {} in settings.'.format(key, from_env, from_settings)
+        raise ImproperlyConfigured(err_msg)
+    else:  # return value or None, if both are None
+        val = from_env if from_env else from_settings
+        if val is None:
+            val = default
+        return val
+
+
 def get_plugins(plugins_dir):
+    """
+    :param module plugins_dir: Imported module
+    :return:
+    :rtype: Iterator
+    """
     for name in plugins_dir.__all__:
         plugin = getattr(plugins_dir, name)
         try:
@@ -22,7 +49,6 @@ def get_plugins(plugins_dir):
             # raise an exception, log a message,
             # or just ignore the problem
             raise
-            pass
         yield p
 
 
