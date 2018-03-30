@@ -98,8 +98,10 @@ class Plugin(BasePlugin):
         measurement = create_influxdb_obj(idcode, sensor, fields)
         measurements = [measurement]
         # import json; print(json.dumps(measurement, indent=1)); print(data)
-        iclient = get_influxdb_client(database=ESP_EASY_DB)
+        dbname = uname  # Use username as database name
+        iclient = get_influxdb_client(database=dbname)
         try:
+            iclient.create_database(dbname)
             iclient.write_points(measurements)
             response = HttpResponse("ok")
         except InfluxDBClientError as err:
