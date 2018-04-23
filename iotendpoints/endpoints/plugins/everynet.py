@@ -101,17 +101,22 @@ class Plugin(BasePlugin):
                     err_msg = '[EVERYNET] payload is not json: {}'.format(data_str)
                     logger.warning(err_msg)
                     return HttpResponse("OK: dumped data to a file.")
-                keys = list(sensordata.keys())
-                # print(keys)
-                keys.sort()
-                keys_str = '-'.join(keys)
             except json.decoder.JSONDecodeError as err:
                 log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
                 err_msg = 'Invalid data: "{}"... Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
                 logger.error(log_msg)
                 return HttpResponse(err_msg, status=400)
+            if 'id' in sensordata and 'sensor' in sensordata:
+                keys = list(sensordata['data'].keys())
+                idata = sensordata['data']
+                pass
+            else:  # old method
+                keys = list(sensordata.keys())
+                idata = sensordata
+            keys.sort()
+            keys_str = '-'.join(keys)
             ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
-            measurement = create_influxdb_obj(devaddr, keys_str, sensordata, ts)
+            measurement = create_influxdb_obj(devaddr, keys_str, idata, ts)
             measurements = [measurement]
             iclient = get_influxdb_client(database=EVERYNET_DB)
             try:
