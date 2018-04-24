@@ -86,7 +86,7 @@ class Plugin(BasePlugin):
             return HttpResponse(err_msg, status=400)
         # meta and type keys should be always in request json
         try:
-            devaddr = data['meta']['device_addr']
+            device = data['meta']['device']
             times = str(data['meta']['time'])
             packet_type = data['type']
         except KeyError as err:
@@ -95,7 +95,7 @@ class Plugin(BasePlugin):
             logger.error(log_msg)
             return HttpResponse(err_msg, status=400)
         now = timezone.now().astimezone(pytz.utc)
-        path = os.path.join(settings.MEDIA_ROOT, 'everynet', now.strftime('%Y-%m-%d'), devaddr)
+        path = os.path.join(settings.MEDIA_ROOT, 'everynet', now.strftime('%Y-%m-%d'), device)
         os.makedirs(path, exist_ok=True)
         fpath = os.path.join(path, now.strftime('%Y%m%dT%H%M%S.%fZ.json'))
         with open(fpath, 'wt') as destination:
@@ -133,7 +133,7 @@ class Plugin(BasePlugin):
                 keys.sort()
                 keys_str = '-'.join(keys)
             ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
-            measurement = create_influxdb_obj(devaddr, keys_str, idata, ts)
+            measurement = create_influxdb_obj(device, keys_str, idata, ts)
             measurements = [measurement]
             dbname = request.GET.get('db')
             if dbname is None:
