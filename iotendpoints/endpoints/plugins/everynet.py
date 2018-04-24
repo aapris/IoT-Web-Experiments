@@ -27,6 +27,17 @@ EVERYNET_DB = get_setting('EVERYNET_DB', 'everynet')
 logger = logging.getLogger(__name__)
 
 
+def handle_v1(data):
+    pass
+
+
+def handle_paxcounter(data_str):
+    wifi = int.from_bytes(data_str[:2], byteorder='big')
+    ble = int.from_bytes(data_str[2:], byteorder='big')
+    idata = {'wifi': wifi, 'ble': ble}
+    return idata
+
+
 class Plugin(BasePlugin):
     """
     Everynet.io plugin. Checks if endpoint's URL has been set in env.
@@ -94,31 +105,41 @@ class Plugin(BasePlugin):
             return ok_response
         elif packet_type == 'uplink':
             payload = data['params']['payload'].encode()
-            data_str = base64.decodebytes(payload).decode('utf8')
-            try:
-                sensordata = json.loads(data_str)
-                if not isinstance(sensordata, dict):
-                    err_msg = '[EVERYNET] payload is not json: {}'.format(data_str)
-                    logger.warning(err_msg)
-                    return HttpResponse("OK: dumped data to a file.")
-            except json.decoder.JSONDecodeError as err:
-                log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
-                err_msg = 'Invalid data: "{}"... Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
-                logger.error(log_msg)
-                return HttpResponse(err_msg, status=400)
-            if 'id' in sensordata and 'sensor' in sensordata:
-                keys = list(sensordata['data'].keys())
-                idata = sensordata['data']
-                pass
-            else:  # old method
-                keys = list(sensordata.keys())
-                idata = sensordata
-            keys.sort()
-            keys_str = '-'.join(keys)
+            if request.GET.get('type') == 'paxcounter':
+                data_str = base64.decodebytes(payload)
+                idata = handle_paxcounter(data_str)
+                keys_str = 'wifi-ble'
+            else:
+                data_str = base64.decodebytes(payload).decode('utf8')
+                handle_v1(data_str)  # TODO
+                try:
+                    sensordata = json.loads(data_str)
+                    if not isinstance(sensordata, dict):
+                        err_msg = '[EVERYNET] payload is not json: {}'.format(data_str)
+                        logger.warning(err_msg)
+                        return HttpResponse("OK: dumped data to a file.")
+                except json.decoder.JSONDecodeError as err:
+                    log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
+                    err_msg = 'Invalid data: "{}"... Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
+                    logger.error(log_msg)
+                    return HttpResponse(err_msg, status=400)
+                if 'id' in sensordata and 'sensor' in sensordata:
+                    keys = list(sensordata['data'].keys())
+                    idata = sensordata['data']
+                    pass
+                else:  # old method
+                    keys = list(sensordata.keys())
+                    idata = sensordata
+                keys.sort()
+                keys_str = '-'.join(keys)
             ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
             measurement = create_influxdb_obj(devaddr, keys_str, idata, ts)
             measurements = [measurement]
-            iclient = get_influxdb_client(database=EVERYNET_DB)
+            dbname = request.GET.get('db')
+            if dbname is None:
+                dbname = EVERYNET_DB
+            iclient = get_influxdb_client(database=dbname)
+            iclient.create_database(dbname)
             try:
                 iclient.write_points(measurements)
                 response = HttpResponse("ok")
