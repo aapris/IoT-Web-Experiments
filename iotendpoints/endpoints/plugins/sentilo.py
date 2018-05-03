@@ -185,6 +185,7 @@ class Plugin(BasePlugin):
             save_to_influxdb.delay(dbname, measurements)
         except Exception as err:
             logger.error(err)
-        push_ngsi_orion.delay(data, ORION_URL_ROOT, ORION_USERNAME, ORION_PASSWORD)
+        ngsi_json = parse_sentilo2ngsi(data)
+        push_ngsi_orion.delay(ngsi_json, ORION_URL_ROOT, ORION_USERNAME, ORION_PASSWORD)
         response = HttpResponse("ok")
         return response
