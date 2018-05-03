@@ -1,5 +1,5 @@
-
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -23,7 +23,6 @@ INSTALLED_APPS = [
 ]
 
 ROOT_URLCONF = 'iotendpoints.urls'
-
 
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
@@ -52,6 +51,9 @@ LOGGING = {
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
         },
+        'detailed': {
+            'format': '[%(asctime)s] %(levelname)-8s %(module)s.%(funcName)s:%(lineno)d "%(message)s"'
+        },
         'simple': {
             'format': '[%(asctime)s] %(levelname)-8s"%(message)s"'
         },
@@ -66,7 +68,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': LOG_FILE,
-            'formatter': 'simple',
+            'formatter': 'detailed',
             'delay': False,
             'when': 'midnight',
         },
