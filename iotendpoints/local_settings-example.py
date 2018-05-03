@@ -36,6 +36,8 @@ DATABASES = {
 
 TIME_ZONE = 'Europe/Helsinki'
 
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
 # LOG_FILE = '/site/path.to/logs/django.log'
 LOG_FILE = os.path.normpath(os.path.join(BASE_DIR, "django.log"))
 
