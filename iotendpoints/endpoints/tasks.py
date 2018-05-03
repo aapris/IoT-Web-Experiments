@@ -36,7 +36,7 @@ def push_ngsi_orion(data, url_root, username, password):
         resp = requests.patch('{}/entities/{}/attrs/'.format(url_root, data['id']), auth=(username, password),
                               json={'NoiseLevelObserved': data['NoiseLevelObserved']})
     except Exception as err:
-        logger.error('Something went wrong! Exception: {}'.format(e))
+        logger.error('Something went wrong! Exception: {}'.format(err))
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(err))
 
     # ...if updating failed, the entity probably doesn't exist yet so create it
