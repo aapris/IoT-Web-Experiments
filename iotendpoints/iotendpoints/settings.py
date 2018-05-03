@@ -131,3 +131,4 @@ except:
     print("cp {}/local_settings-example.py {}/local_settings.py".format(BASE_DIR, BASE_DIR))
     print("and modify as needed.")
     exit(1)
+
