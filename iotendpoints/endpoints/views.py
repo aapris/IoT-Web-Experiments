@@ -37,7 +37,7 @@ def create_path(postfix):
 def create_influxdb_obj(dev_id, measurement, fields, timestamp=None):
     if timestamp is None:
         timestamp = datetime.datetime.utcnow()
-    for k, v in fields.items(): 
+    for k, v in fields.items():
         fields[k] = float(v)
     measurement = {
         "measurement": measurement,
@@ -285,18 +285,18 @@ def parse_sentilo_data(data):
 
 
 def parse_sentilo2ngsi(data):
-    device_id = data['sensors'][0]['sensor'][:-2] # all list items _should_ have same ID
+    device_id = data['sensors'][0]['sensor'][:-2]  # all list items _should_ have same ID
     obs_type = 'NoiseLevelObserved'
     location = {
         "type": "Point",
-        "coordinates": [0,0]
-    } # TODO
+        "coordinates": [0, 0]
+    }  # TODO
     # address = ""
     sonometerClass = "1"
 
     dateObserved = None
     measurand = None
-    for m in data['sensors']: # iterate to find LAeq aka "N" among params reported by sensor
+    for m in data['sensors']:  # iterate to find LAeq aka "N" among params reported by sensor
         if 'N' in m['sensor'][-1]:
             ts = parse(m['observations'][0]['timestamp'], dayfirst=True)
             dateObserved = ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -331,24 +331,24 @@ def push_ngsi_orion(data):
     resp = None
     try:
         # try to update the entity...
-        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']), 
-                auth=(ORION_USERNAME, ORION_PASSWORD),
-                json={'NoiseLevelObserved': data['NoiseLevelObserved']})
+        resp = requests.patch('{}/entities/{}/attrs/'.format(ORION_URL_ROOT, data['id']),
+                              auth=(ORION_USERNAME, ORION_PASSWORD),
+                              json={'NoiseLevelObserved': data['NoiseLevelObserved']})
     except Exception as e:
-        #log.error('Something went wrong! Exception: {}'.format(e))
+        # log.error('Something went wrong! Exception: {}'.format(e))
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(e))
 
     # ...if updating failed, the entity probably doesn't exist yet so create it
     if not resp or (resp.status_code != 204):
-        resp = requests.post('{}/entities/'.format(ORION_URL_ROOT), 
-                auth=(ORION_USERNAME, ORION_PASSWORD),
-                json=data)
+        resp = requests.post('{}/entities/'.format(ORION_URL_ROOT),
+                             auth=(ORION_USERNAME, ORION_PASSWORD),
+                             json=data)
     return resp
 
 
 @csrf_exempt
 def sentilohandler(request, version='0.0.0'):
-    rawbody =  request.body.decode('utf-8')
+    rawbody = request.body.decode('utf-8')
     try:
         data = json.loads(request.body.decode('utf-8'))
     except ValueError as err:
@@ -373,7 +373,7 @@ def sentilohandler(request, version='0.0.0'):
         return HttpResponse(str(err), status=500)
     influx_response = HttpResponse("ok")
 
-    #parse to NGSI format and push to Orion
+    # parse to NGSI format and push to Orion
     ngsi_json = parse_sentilo2ngsi(data)
     ngsi_response = push_ngsi_orion(ngsi_json)
 
