@@ -179,7 +179,7 @@ class Plugin(BasePlugin):
             f.write(json.dumps(data, indent=1) + '\n')
         measurements = parse_sentilo_data(data)
         device_id = data['sensors'][0]['sensor'][:-2]  # all list items _should_ have same ID
-        datalogger, created = get_datalogger(device_id, update_activity=True)
+        datalogger, created = get_datalogger(device_id, description='sentilo', update_activity=True)
         # lat = lon = None
         if datalogger.location:
             lon, lat = datalogger.location.coords  # Note lon, lat order

@@ -14,10 +14,17 @@ META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
 
 
-def get_datalogger(devid, update_activity=False):
+def get_datalogger(devid, name='', description='', update_activity=False):
     datalogger, created = Datalogger.objects.get_or_create(devid=devid)
+    changed = False
+    if created:
+        datalogger.description = description
+        datalogger.name = name
+        changed = True
     if update_activity:
         datalogger.activity_at = timezone.now()
+        changed = True
+    if changed:
         datalogger.save()
     return datalogger, created
 

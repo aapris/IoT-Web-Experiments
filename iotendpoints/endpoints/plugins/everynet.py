@@ -134,7 +134,7 @@ class Plugin(BasePlugin):
                     idata = sensordata
                 keys.sort()
                 keys_str = '-'.join(keys)
-            datalogger, created = get_datalogger(device, update_activity=True)
+            datalogger, created = get_datalogger(device, description='everynet', update_activity=True)
             ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
             measurement = create_influxdb_obj(device, keys_str, idata, ts)
             measurements = [measurement]

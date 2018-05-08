@@ -13,8 +13,8 @@ admin.site.register(Request, RequestAdmin)
 
 class DataloggerAdmin(admin.OSMGeoAdmin):
     search_fields = ('name', 'description', 'devid')
-    list_display = ('devid', 'activity_at', 'lat', 'lon', 'name', 'created_at',)
-    ordering = ('created_at',)
+    list_display = ('devid', 'activity_at', 'lat', 'lon', 'name', 'description', 'created_at',)
+    ordering = ('-activity_at',)
     readonly_fields = ('location',)
 
 
