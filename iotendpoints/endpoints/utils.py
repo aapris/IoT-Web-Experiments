@@ -8,9 +8,18 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
-from .models import Request
+from .models import Request, Datalogger
+
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
              'REQUEST_METHOD', 'SERVER_NAME', 'SERVER_PORT', 'REQUEST_URI']
+
+
+def get_datalogger(devid, update_activity=False):
+    datalogger, created = Datalogger.objects.get_or_create(devid=devid)
+    if update_activity:
+        datalogger.activity_at = timezone.now()
+        datalogger.save()
+    return datalogger, created
 
 
 def get_setting(key, default=None):
