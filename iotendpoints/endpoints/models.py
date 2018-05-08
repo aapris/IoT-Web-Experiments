@@ -2,6 +2,7 @@ import os
 import string
 import random
 from django.contrib.gis.db import models
+from django.contrib.gis.geos import Point
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
@@ -69,3 +70,10 @@ class Datalogger(models.Model):
     # Returns the string representation of the model.
     def __str__(self):
         return '{} ({})'.format(self.name, self.devid)
+
+    def save(self, *args, **kwargs):
+        if self.lat is not None and self.lon is not None:
+            self.location = Point(self.lon, self.lat)
+        else:
+            self.location = None
+        super(Datalogger, self).save(*args, **kwargs)
