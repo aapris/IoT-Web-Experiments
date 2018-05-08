@@ -119,54 +119,6 @@ def create_path(postfix):
     return fpath
 
 
-def dump_request(request, user=None, postfix=None):
-    """
-    Dump a HttpRequest to files in a directory.
-    """
-    r = Request(method=request.method, user=user)
-    fpath = create_path(postfix)
-    fname = os.path.join(fpath, 'request_body.txt')
-    with open(fname, 'wb') as destination:
-        destination.write(request.body)
-    res = []
-    res.append('Request Method: {}'.format(request.method))
-    res.append('Request full path: {}'.format(request.get_full_path()))
-
-    res.append('--- GET parameters ---')
-    for key, val in request.GET.items():
-        res.append('{}={}'.format(key, val))
-
-    res.append('--- POST parameters ---')
-    for key, val in request.POST.items():
-        res.append('{}={}'.format(key, val))
-
-    res.append('--- META parameters ---')
-    for key, val in request.META.items():
-        if key.startswith('HTTP_') or key.startswith('CONTENT_') or key in META_KEYS:
-            res.append('{}={}'.format(key, val))
-
-    res.append('--- FILES ---')
-
-    fnr = 0
-    for key, val in request.FILES.items():
-        res.append('{}. {}={}'.format(fnr, key, val))
-        fnr += 1
-        f = request.FILES[key]
-        res.append('content_type={}'.format(f.content_type))
-        res.append('size={}B'.format(f.size))
-        fname = os.path.join(fpath, '{}'.format(val))
-        res.append('path={}'.format(fname))
-        with open(fname, 'wb+') as destination:
-            for chunk in f.chunks():
-                destination.write(chunk)
-    r.filecount = fnr
-    r.save()
-    fname = os.path.join(fpath, 'request_headers.txt')
-    with open(fname, 'wt+') as destination:
-        destination.write('\n'.join(res))
-    return res
-
-
 class BasePlugin:
     """
     Every plugin must inherit BasePlugin and implement at least get_urlpatterns()

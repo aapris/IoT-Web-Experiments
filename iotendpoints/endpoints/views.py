@@ -54,7 +54,7 @@ def index(request):
     return HttpResponse("Hello, world. This is IoT endpoint.")
 
 
-def _dump_request_endpoint(request, user=None, postfix=None):
+def dump_request(request, user=None, postfix=None):
     """
     Dump a HttpRequest to files in a directory.
     """
@@ -107,7 +107,7 @@ def obscure_dump_request_endpoint(request, postfix):
     """
     Dump a HttpRequest to files in a directory.
     """
-    res = _dump_request_endpoint(request, postfix=postfix)
+    res = dump_request(request, postfix=postfix)
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped HTTP request data to a file.")
 
@@ -117,7 +117,7 @@ def digita_dump_request_endpoint(request):
     """
     Dump a HttpRequest to files in a directory.
     """
-    res = _dump_request_endpoint(request, postfix='digita')
+    res = dump_request(request, postfix='digita')
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped Digita LoRa HTTP request data to a file.")
 
@@ -127,7 +127,7 @@ def sentilo_dump_request_endpoint(request):
     """
     Dump a HttpRequest to files in a directory.
     """
-    res = _dump_request_endpoint(request, postfix='sentilo')
+    res = dump_request(request, postfix='sentilo')
     print('\n'.join(res))  # to console or stdout/stderr
     return HttpResponse("OK, I dumped Sentilo HTTP request data to a file.")
 
@@ -165,7 +165,7 @@ def basicauth_dump_request_endpoint(request):
         response['WWW-Authenticate'] = 'Basic realm="{}"'.format(BASIC_AUTH_REALM)
         return response
     else:
-        res = _dump_request_endpoint(request, user=user)
+        res = dump_request(request, user=user)
         print('\n'.join(res))
         return HttpResponse("OK, I dumped HTTP request data to a file.")
 
@@ -188,7 +188,7 @@ def aqtest(request):
         response['WWW-Authenticate'] = 'Basic realm="{}"'.format(BASIC_AUTH_REALM)
         return response
     else:
-        res = _dump_request_endpoint(request)
+        res = dump_request(request)
         print('\n'.join(res))
         return HttpResponse("OK, I dumped HTTP request data to a file.")
 
@@ -458,7 +458,7 @@ def mapmytracks(request):
     """
     Dump a HttpRequest to files in a directory.
     """
-    res = _dump_request_endpoint(request, postfix='mapmytracks')
+    res = dump_request(request, postfix='mapmytracks')
     print('\n'.join(res))  # to console or stdout/stderr
     pl = request.POST.get('points', '').split()
     points = [pl[x:x + 4] for x in range(0, len(pl), 4)]
