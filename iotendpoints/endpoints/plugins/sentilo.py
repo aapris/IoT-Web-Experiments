@@ -48,7 +48,7 @@ from django.views.decorators.csrf import csrf_exempt
 from influxdb.exceptions import InfluxDBClientError
 from endpoints.utils import BasePlugin
 from endpoints.utils import basicauth, get_influxdb_client, create_influxdb_obj
-from endpoints.utils import get_setting
+from endpoints.utils import get_setting, get_datalogger
 from endpoints.tasks import save_to_influxdb, push_ngsi_orion
 
 ENV_NAME = 'SENTILO_URL'
@@ -59,7 +59,6 @@ logger = logging.getLogger(__name__)
 ORION_URL_ROOT = get_setting('ORION_URL_ROOT')
 ORION_USERNAME = get_setting('ORION_USERNAME')
 ORION_PASSWORD = get_setting('ORION_PASSWORD')
-
 
 
 def parse_sentilo_data(data):
@@ -89,13 +88,13 @@ def parse_sentilo_data(data):
     return measurements
 
 
-def parse_sentilo2ngsi(data):
+def parse_sentilo2ngsi(data, lat=None, lon=None):
     device_id = data['sensors'][0]['sensor'][:-2]  # all list items _should_ have same ID
     obs_type = 'NoiseLevelObserved'
     location = {
         "type": "Point",
-        "coordinates": [60.174357, 24.980876]  # testing some fixed coordinates
-    }  # TODO
+        "coordinates": [lat, lon]
+    }
     # address = ""
     sonometer_class = "1"
     date_observed = None
@@ -179,13 +178,22 @@ class Plugin(BasePlugin):
         with open('/tmp/sentilodata.log', 'at') as f:
             f.write(json.dumps(data, indent=1) + '\n')
         measurements = parse_sentilo_data(data)
-        # import json; print(json.dumps(measurement, indent=1)); print(data)
+        device_id = data['sensors'][0]['sensor'][:-2]  # all list items _should_ have same ID
+        datalogger, created = get_datalogger(device_id, update_activity=True)
+        # lat = lon = None
+        if datalogger.location:
+            lon, lat = datalogger.location.coords  # Note lon, lat order
+        else:
+            lat = datalogger.lat
+            lon = datalogger.lon
+        # print(json.dumps(measurement, indent=1)); print(data)
         dbname = SENTILO_DB
         try:
             save_to_influxdb.delay(dbname, measurements)
         except Exception as err:
             logger.error(err)
-        ngsi_json = parse_sentilo2ngsi(data)
+        ngsi_json = parse_sentilo2ngsi(data, lat, lon)
+        # print(json.dumps(ngsi_json, indent=1))
         push_ngsi_orion.delay(ngsi_json, ORION_URL_ROOT, ORION_USERNAME, ORION_PASSWORD)
         response = HttpResponse("ok")
         return response

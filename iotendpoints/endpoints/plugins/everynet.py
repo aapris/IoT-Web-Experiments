@@ -92,7 +92,7 @@ class Plugin(BasePlugin):
             packet_type = data['type']
         except KeyError as err:
             log_msg = '[EVERYNET] Invalid json structure: "{}". Missing key: {}.'.format(body_data, err)
-            err_msg =  'Invalid json structure: "{}". Hint: missing key {}.'.format(body_data, err)
+            err_msg = 'Invalid json structure: "{}". Hint: missing key {}.'.format(body_data, err)
             logger.error(log_msg)
             return HttpResponse(err_msg, status=400)
         now = timezone.now().astimezone(pytz.utc)
@@ -120,7 +120,8 @@ class Plugin(BasePlugin):
                         logger.warning(err_msg)
                         return HttpResponse("OK: dumped data to a file.")
                 except json.decoder.JSONDecodeError as err:
-                    log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
+                    log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(
+                        data_str[:50])
                     err_msg = 'Invalid data: "{}"... Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
                     logger.error(log_msg)
                     return HttpResponse(err_msg, status=400)
@@ -133,6 +134,7 @@ class Plugin(BasePlugin):
                     idata = sensordata
                 keys.sort()
                 keys_str = '-'.join(keys)
+            datalogger, created = get_datalogger(device, update_activity=True)
             ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
             measurement = create_influxdb_obj(device, keys_str, idata, ts)
             measurements = [measurement]
