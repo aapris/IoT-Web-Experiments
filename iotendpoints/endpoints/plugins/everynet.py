@@ -18,8 +18,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from influxdb.exceptions import InfluxDBClientError
 from endpoints.utils import BasePlugin
-from endpoints.utils import dump_request, get_influxdb_client, create_influxdb_obj
-from endpoints.utils import get_setting
+from endpoints.utils import get_influxdb_client, create_influxdb_obj
+from endpoints.utils import get_setting, get_datalogger
+from endpoints.views import dump_request
 
 ENV_NAME = 'EVERYNET_URL'
 URL = get_setting(ENV_NAME)
