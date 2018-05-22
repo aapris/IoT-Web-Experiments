@@ -8,6 +8,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
+from django.utils.timezone import get_default_timezone
+
 from .models import Request, Datalogger
 
 META_KEYS = ['QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_USER',
@@ -98,9 +100,12 @@ def get_influxdb_client(host='127.0.0.1', port=8086, database='mydb'):
 
 
 def create_influxdb_obj(dev_id, measurement, fields, timestamp=None, extratags=None):
+    # Make sure timestamp is timezone aware and in UTC time
     if timestamp is None:
-        timestamp = datetime.datetime.utcnow()
-    # TODO: check that timestmap is in UTC timezone and raise value error if it is naïve
+        timestamp = pytz.UTC.localize(datetime.datetime.utcnow())
+    elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+        timestamp = get_default_timezone().localize(timestamp)
+    timestamp = timestamp.astimezone(pytz.UTC)
     for k, v in fields.items():
         fields[k] = float(v)
     measurement = {
@@ -108,7 +113,7 @@ def create_influxdb_obj(dev_id, measurement, fields, timestamp=None, extratags=N
         "tags": {
             "dev-id": dev_id,
         },
-        "time": timestamp.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "time": timestamp.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),  # is in UTC time
         "fields": fields
     }
     if extratags is not None:

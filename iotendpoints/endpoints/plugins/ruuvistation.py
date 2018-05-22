@@ -6,15 +6,13 @@ You must declare environment variable RUUVISTATION_URL to activate this plugin.
 
 import json
 import dateutil.parser
-import datetime
 import logging
-from dateutil.parser import parse
 from django.conf.urls import url
 from django.http import HttpResponse
+from django.utils.timezone import get_default_timezone
 from django.views.decorators.csrf import csrf_exempt
-from influxdb.exceptions import InfluxDBClientError
 from endpoints.utils import BasePlugin
-from endpoints.utils import basicauth, get_influxdb_client, create_influxdb_obj
+from endpoints.utils import basicauth, create_influxdb_obj
 from endpoints.utils import get_setting
 from endpoints.tasks import save_to_influxdb
 
@@ -35,6 +33,8 @@ def parse_tag_data(data):
     measurements = []
     for tag in data['tags']:
         ts = dateutil.parser.parse(tag['updateAt'])
+        if ts.tzinfo is None or ts.tzinfo.utcoffset(ts) is None:
+            ts = get_default_timezone().localize(ts)
         dev_id = tag['id']
         extratags = {'name': tag['name']}
         fields = {}
@@ -48,7 +48,7 @@ def parse_tag_data(data):
 
 class Plugin(BasePlugin):
     """
-    Esp Easy plugin. Checks if endpoint's URL has been set in env.
+    Ruuvi Station plugin. Checks if endpoint's URL has been set in env.
     """
     name = 'ruuvistation'
     viewname = 'ruuvistationhandler'
@@ -88,6 +88,7 @@ class Plugin(BasePlugin):
            http -v --auth user:djangouser --form POST http://127.0.0.1:8000/ruuvistation
         """
         uname, passwd, user = basicauth(request)
+        body_data = ''
         # Reject request if required variables are not set
         if user is None:
             pass
