@@ -71,9 +71,7 @@ class Plugin(BasePlugin):
         """
         Endpoint requires idcode, sensor and data parameters. Also a valid Django user must exist. Test like this:
 
-        export EVERYNET_URL=esp
-        echo -n "idcode=unique_id_here&sensor=bme280&id=0&data=Temperature=24.84,Humidity=52.05,Pressure=1002.50" | \
-           http -v --auth user:pass --form POST http://127.0.0.1:8000/esp
+        export EVERYNET_URL=everynet
         """
         ok_response = HttpResponse("ok")
         dump_request(request, postfix='everynet')
