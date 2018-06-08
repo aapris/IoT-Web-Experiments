@@ -75,6 +75,7 @@ class Plugin(BasePlugin):
         """
         ok_response = HttpResponse("ok")
         dump_request(request, postfix='everynet')
+        body_data = ''
         try:
             body_data = request.body
             data = json.loads(body_data.decode('utf-8'))
@@ -97,6 +98,7 @@ class Plugin(BasePlugin):
         path = os.path.join(settings.MEDIA_ROOT, 'everynet', now.strftime('%Y-%m-%d'), device)
         os.makedirs(path, exist_ok=True)
         fpath = os.path.join(path, now.strftime('%Y%m%dT%H%M%S.%fZ.json'))
+        dl_descr = 'everynet'
         with open(fpath, 'wt') as destination:
             destination.write(json.dumps(data, indent=1))
         if packet_type == 'error':
@@ -108,6 +110,7 @@ class Plugin(BasePlugin):
                 data_str = base64.decodebytes(payload)
                 idata = handle_paxcounter(data_str)
                 keys_str = 'wifi-ble'
+                dl_descr = 'paxcounter'
             else:
                 data_str = base64.decodebytes(payload).decode('utf8')
                 handle_v1(data_str)  # TODO
@@ -132,8 +135,10 @@ class Plugin(BasePlugin):
                     idata = sensordata
                 keys.sort()
                 keys_str = '-'.join(keys)
-            datalogger, created = get_datalogger(device, description='everynet', update_activity=True)
+            datalogger, created = get_datalogger(device, description=dl_descr, update_activity=True)
+            # TODO: log new devices (created == True), maybe send email to admin?
             ts = datetime.datetime.utcfromtimestamp(data['meta']['time'])
+            ts = pytz.UTC.localize(ts)  # Make timestamp timezone aware at UTC
             measurement = create_influxdb_obj(device, keys_str, idata, ts)
             measurements = [measurement]
             dbname = request.GET.get('db')
