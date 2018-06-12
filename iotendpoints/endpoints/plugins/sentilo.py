@@ -93,7 +93,7 @@ def parse_sentilo2ngsi(data, lat=None, lon=None):
     obs_type = 'NoiseLevelObserved'
     location = {
         "type": "Point",
-        "coordinates": [lat, lon]
+        "coordinates": [lon, lat]
     }
     # address = ""
     sonometer_class = "1"
@@ -108,23 +108,18 @@ def parse_sentilo2ngsi(data, lat=None, lon=None):
             laeq = float(m['observations'][0]['value'])
             measurand = "{} | {} | {}".format("LAeq", laeq, "A-weighted, equivalent, sound level")
     if measurand:
+        # _id = "{}-NoiseLevelObserved-{}".format(device_id, date_observed)
+        _id = device_id
         noiseLevelObserved_payload = {
-            "id": device_id,
-            "type": "Cesva-TA120",
-            "NoiseLevelObserved": {
-                "type": "NoiseLevelObserved",
-                "value": {
-                    "id": "{}-NoiseLevelObserved-{}".format(device_id, date_observed),
-                    "type": obs_type,
-                    "location": location,
-                    "dateObserved": date_observed,
-                    "measurand": [
-                        measurand
-                    ],
-                    "LAeq": laeq,
-                    "sonometerClass": sonometer_class
-                }
-            }
+            "id": _id,
+            "type": obs_type,
+            "location": location,
+            "dateObserved": date_observed,
+            "measurand": [
+                measurand
+            ],
+            "LAeq": laeq,
+            "sonometerClass": sonometer_class
         }
         return noiseLevelObserved_payload
     return None
@@ -194,6 +189,7 @@ class Plugin(BasePlugin):
             logger.error(err)
         ngsi_json = parse_sentilo2ngsi(data, lat, lon)
         # print(json.dumps(ngsi_json, indent=1))
+        # TODO: this should be dynamic and configurable per sensor
         push_ngsi_orion.delay(ngsi_json, ORION_URL_ROOT, ORION_USERNAME, ORION_PASSWORD)
         response = HttpResponse("ok")
         return response
