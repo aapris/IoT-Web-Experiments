@@ -36,13 +36,16 @@ def parse_tag_data(data):
         if ts.tzinfo is None or ts.tzinfo.utcoffset(ts) is None:
             ts = get_default_timezone().localize(ts)
         dev_id = tag['id']
-        extratags = {'name': tag['name']}
+        extratags = {}
+        name = tag.get('name')
+        if name:
+            extratags['name'] = name
         fields = {}
         for key in to_save:
             fields[key] = tag.get(key)
         measurement = create_influxdb_obj(dev_id, 'ruuvitag', fields, timestamp=ts, extratags=extratags)
         measurements.append(measurement)
-        print(measurements)
+        # print(measurements)
     return measurements
 
 
