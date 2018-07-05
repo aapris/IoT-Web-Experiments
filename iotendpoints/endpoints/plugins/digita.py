@@ -123,7 +123,29 @@ class Plugin(BasePlugin):
             destination.write(json.dumps(data, indent=1))
         response = HttpResponse("ok")
         # TODO: move this to a function
-        if payload_hex[:2] == '13':
+        if len(payload_hex) == 8:
+            idata = {
+                'wifi': int(payload_hex[0:4], 16),
+                'ble': int(payload_hex[4:8], 16)
+            }
+            idata['rssi'] = rssi
+            keys_str = 'wifi-ble'
+            dl_descr = 'paxcounter'
+            datalogger, created = get_datalogger(device, description=dl_descr, update_activity=True)
+            ts = dateutil.parser.parse(times)
+            measurement = create_influxdb_obj(device, keys_str, idata, ts)
+            measurements = [measurement]
+            # dbname = request.GET.get('db', DIGITA_DB)
+            dbname = 'paxcounter'
+            iclient = get_influxdb_client(database=dbname)
+            iclient.create_database(dbname)
+            try:
+                iclient.write_points(measurements)
+            except InfluxDBClientError as err:
+                err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
+                logger.error(err_msg)
+                response = HttpResponse(err_msg, status=500)
+        elif payload_hex[:2] == '13':
             idata = handle_clickey_tempsens(payload_hex)
             idata['rssi'] = rssi
             keys_str = 'tempsens'
