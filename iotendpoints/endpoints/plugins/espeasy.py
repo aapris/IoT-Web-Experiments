@@ -77,6 +77,8 @@ class Plugin(BasePlugin):
         p = request.POST
         if user is None:
             return HttpResponse("Authentication failure", status=401)
+        if request.method == 'GET':
+            return HttpResponse('ok', status=200)
         idcode = p.get('idcode')
         sensor = p.get('sensor')
         data = p.get('data')
