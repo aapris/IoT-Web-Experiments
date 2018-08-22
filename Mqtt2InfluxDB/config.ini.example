@@ -1,0 +1,12 @@
+[DEFAULT]
+
+[influxdb]
+host = 127.0.0.1
+port = 8086
+
+[mqtt]
+host = mqtt.example.org
+port = 1883
+topic = vv/#
+username = user_subscribe
+password = valid_pass
