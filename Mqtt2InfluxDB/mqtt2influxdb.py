@@ -101,7 +101,8 @@ def handle_message(topic, data):
         database = tt[-2] if len(tt) > 1 else 'mydb'
         handle_ruuvitag(topic, data, database)
     elif ('chipid' in data or 'mac' in data) and 'sensor' in data and 'data' in data:
-        database = 'mydb'  # FIXME: get db name from topic
+        # database name is the second token in the topic
+        database = tt[1] if len(tt) > 1 else 'mydb'
         handle_tulevaisuudenesine(topic, data, database)
     else:
         print("No handle :(")
@@ -124,6 +125,7 @@ def handle_tulevaisuudenesine(topic, data, database):
         dev_id = data['mac'].upper()
     else:
         print('No dev_id found!')
+        return
     json_body = create_influxdb_obj(dev_id, measurement, fields, timestamp=None, extratags=None)
     if args.verbose > 2:
         print(json.dumps(json_body, indent=2))
