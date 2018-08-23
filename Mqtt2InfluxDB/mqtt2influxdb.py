@@ -131,7 +131,10 @@ def handle_tulevaisuudenesine(topic, data, database):
         print('{} {} ...'.format(topic, json.dumps(json_body)[:80]))
     if args.dryrun is False:
         iclient = get_influxdb_client(database=database)
-        saved = iclient.write_points([json_body])  # Note []
+        try:
+            saved = iclient.write_points([json_body])  # Note []
+        except influxdb.exceptions.InfluxDBClientError as err:
+            print('ERROR: {}'.format(err))
     if saved is False:
         print('Dryrun: {}, Not saved {}'.format(args.dryrun, json.dumps(data)))
 
