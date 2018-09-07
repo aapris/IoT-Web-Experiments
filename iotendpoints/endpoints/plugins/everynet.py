@@ -11,6 +11,7 @@ import base64
 import logging
 import datetime
 import pytz
+import re
 from django.conf import settings
 from django.conf.urls import url
 from django.http import HttpResponse
@@ -37,6 +38,18 @@ def handle_paxcounter(data_str):
     ble = int.from_bytes(data_str[2:], byteorder='big')
     idata = {'wifi': wifi, 'ble': ble}
     return idata
+
+
+def handle_keyval(data_str):
+    idata = dict(re.findall(r'([^,]+)=(".*?"|[^,]+)', data_str))
+    return idata
+
+
+def invalid_data(data_str, msg, status=400):
+    log_msg = '[EVERYNET] Invalid data: "{}". {}.'.format(data_str[:50], msg)
+    err_msg = 'Invalid data: "{}"... Hint: {}'.format(data_str[:50], msg)
+    logger.error(log_msg)
+    return HttpResponse(err_msg, status=status)
 
 
 class Plugin(BasePlugin):
@@ -76,24 +89,23 @@ class Plugin(BasePlugin):
         ok_response = HttpResponse("ok")
         dump_request(request, postfix='everynet')
         body_data = ''
+        if request.method not in ['OPTIONS', 'POST']:
+            return HttpResponse('Only OPTIONS, POST methdods are allowed', status=405)
+        if request.method == 'OPTIONS':  # FIXME: I don't know is this a correct answer
+            return HttpResponse('OK', status=200)
         try:
             body_data = request.body
             data = json.loads(body_data.decode('utf-8'))
         except (ValueError, UnicodeDecodeError) as err:
-            log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be UTF-8 json.'.format(body_data[:50])
-            err_msg = 'Invalid data: "{}"... Hint: should be UTF-8 json.'.format(body_data[:50])
-            logger.error(log_msg)
-            return HttpResponse(err_msg, status=400)
+            return invalid_data(body_data, "Hint: should be UTF-8 json.", status=400)
         # meta and type keys should be always in request json
         try:
             device = data['meta']['device']
             times = str(data['meta']['time'])
             packet_type = data['type']
         except KeyError as err:
-            log_msg = '[EVERYNET] Invalid json structure: "{}". Missing key: {}.'.format(body_data, err)
             err_msg = 'Invalid json structure: "{}". Hint: missing key {}.'.format(body_data, err)
-            logger.error(log_msg)
-            return HttpResponse(err_msg, status=400)
+            return invalid_data(body_data, err_msg, status=400)
         now = timezone.now().astimezone(pytz.utc)
         path = os.path.join(settings.MEDIA_ROOT, 'everynet', now.strftime('%Y-%m-%d'), device)
         os.makedirs(path, exist_ok=True)
@@ -106,11 +118,31 @@ class Plugin(BasePlugin):
             return ok_response
         elif packet_type == 'uplink':
             payload = data['params']['payload'].encode()
-            if request.GET.get('type') == 'paxcounter':
+            _type = request.GET.get('type')
+            if _type == 'paxcounter':
                 data_str = base64.decodebytes(payload)
                 idata = handle_paxcounter(data_str)
                 keys_str = 'wifi-ble'
                 dl_descr = 'paxcounter'
+            elif _type == 'keyval':  # data should be key=val,key2=val2,... formatted
+                data_str = base64.decodebytes(payload).decode('utf8')
+                print(data_str, type(data_str))
+                idata = handle_keyval(data_str)
+                try:  # convert values to floats in dict
+                    idata = {k: float(v) for k, v in idata.items()}
+                except ValueError as err:
+                    err_msg = 'Should be base64 encoded key=val pairs, comma separated.'.format(data_str[:50])
+                    return invalid_data(data_str, err_msg, status=400)
+                print(idata)
+                keys = list(idata.keys())
+                keys.sort()
+                if len(keys) == 0:
+                    err_msg = 'Should be base64 encoded key=val pairs, comma separated.'
+                    # NOTE: from everynet's point of view this is not error.
+                    return invalid_data(data_str, err_msg, status=200)
+
+                keys_str = '_'.join(keys)
+                dl_descr = 'keyval'
             else:
                 data_str = base64.decodebytes(payload).decode('utf8')
                 handle_v1(data_str)  # TODO
@@ -121,11 +153,7 @@ class Plugin(BasePlugin):
                         logger.warning(err_msg)
                         return HttpResponse("OK: dumped data to a file.")
                 except (ValueError) as err:
-                    log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(
-                        data_str[:50])
-                    err_msg = 'Invalid data: "{}"... Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
-                    logger.error(log_msg)
-                    return HttpResponse(err_msg, status=400)
+                    return invalid_data(data_str, "Hint: should be UTF-8 json.", status=400)
                 if 'id' in sensordata and 'sensor' in sensordata:
                     keys = list(sensordata['data'].keys())
                     idata = sensordata['data']
