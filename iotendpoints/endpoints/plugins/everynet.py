@@ -79,7 +79,7 @@ class Plugin(BasePlugin):
         try:
             body_data = request.body
             data = json.loads(body_data.decode('utf-8'))
-        except (json.decoder.JSONDecodeError, UnicodeDecodeError) as err:
+        except (ValueError, UnicodeDecodeError) as err:
             log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be UTF-8 json.'.format(body_data[:50])
             err_msg = 'Invalid data: "{}"... Hint: should be UTF-8 json.'.format(body_data[:50])
             logger.error(log_msg)
@@ -120,7 +120,7 @@ class Plugin(BasePlugin):
                         err_msg = '[EVERYNET] payload is not json: {}'.format(data_str)
                         logger.warning(err_msg)
                         return HttpResponse("OK: dumped data to a file.")
-                except json.decoder.JSONDecodeError as err:
+                except (ValueError) as err:
                     log_msg = '[EVERYNET] Invalid data: "{}". Hint: should be base64 encoded UTF-8 json.'.format(
                         data_str[:50])
                     err_msg = 'Invalid data: "{}"... Hint: should be base64 encoded UTF-8 json.'.format(data_str[:50])
