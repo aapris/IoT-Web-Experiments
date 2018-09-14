@@ -111,15 +111,22 @@ def parse_sentilo2ngsi(data, lat=None, lon=None):
         # _id = "{}-NoiseLevelObserved-{}".format(device_id, date_observed)
         _id = device_id
         noiseLevelObserved_payload = {
-            "id": _id,
-            "type": obs_type,
-            "location": location,
-            "dateObserved": date_observed,
-            "measurand": [
-                measurand
-            ],
-            "LAeq": laeq,
-            "sonometerClass": sonometer_class
+            "id": device_id,
+            "type": "Cesva-TA120",
+            "NoiseLevelObserved": {
+                "type": "NoiseLevelObserved",
+                "value": {
+                    "id": "{}-NoiseLevelObserved-{}".format(device_id, date_observed),
+                    "type": obs_type,
+                    "location": location,
+                    "dateObserved": date_observed,
+                    "measurand": [
+                        measurand
+                    ],
+                    "LAeq": laeq,
+                    "sonometerClass": sonometer_class
+                }
+            }
         }
         return noiseLevelObserved_payload
     return None
