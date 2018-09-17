@@ -99,36 +99,33 @@ def parse_sentilo2ngsi(data, lat=None, lon=None):
     sonometer_class = "1"
     date_observed = None
     measurand = None
-    laeq = None
+    laeq = lamax = laeq1s = date_observed_from = date_observed_to = None
     for m in data['sensors']:  # iterate to find LAeq aka "N" among params reported by sensor
+        # print(m)
         if 'N' in m['sensor'][-1]:
             ts = parse(m['observations'][0]['timestamp'], dayfirst=True)
-            # TODO: this should be 60 sec period of time
-            date_observed = ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            date_observed_from = (ts - datetime.timedelta(seconds=60)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            date_observed_to = ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             laeq = float(m['observations'][0]['value'])
             measurand = "{} | {} | {}".format("LAeq", laeq, "A-weighted, equivalent, sound level")
-    if measurand:
-        # _id = "{}-NoiseLevelObserved-{}".format(device_id, date_observed)
+        if 'S' in m['sensor'][-1]:
+            laeq1s = m['observations'][0]['value']
+            lamax = max([float(x.split(',')[0]) for x in laeq1s.split(';')])
+    if laeq:
         _id = device_id
-        noiseLevelObserved_payload = {
+        noise_level = {
             "id": device_id,
-            "type": "Cesva-TA120",
-            "NoiseLevelObserved": {
-                "type": "NoiseLevelObserved",
-                "value": {
-                    "id": "{}-NoiseLevelObserved-{}".format(device_id, date_observed),
-                    "type": obs_type,
-                    "location": location,
-                    "dateObserved": date_observed,
-                    "measurand": [
-                        measurand
-                    ],
-                    "LAeq": laeq,
-                    "sonometerClass": sonometer_class
-                }
-            }
+            "type": "NoiseLevelObserved",
+            "LAeq": laeq,
+            "dateObservedFrom": date_observed_from,
+            "dateObservedTo": date_observed_to,
+            "measurand": [measurand],
+            "sonometerClass": sonometer_class,
+            "location": location
         }
-        return noiseLevelObserved_payload
+        if lamax:
+            noise_level["LAmax"] = lamax
+        return noise_level
     return None
 
 
@@ -195,7 +192,7 @@ class Plugin(BasePlugin):
         except Exception as err:
             logger.error(err)
         ngsi_json = parse_sentilo2ngsi(data, lat, lon)
-        # print(json.dumps(ngsi_json, indent=1))
+        # print(json.dumps(ngsi_json, indent=2))
         # TODO: this should be dynamic and configurable per sensor
         push_ngsi_orion.delay(ngsi_json, ORION_URL_ROOT, ORION_USERNAME, ORION_PASSWORD)
         response = HttpResponse("ok")

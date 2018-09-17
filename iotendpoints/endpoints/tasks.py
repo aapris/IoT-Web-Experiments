@@ -32,14 +32,18 @@ def save_to_influxdb(dbname, measurements):
 def push_ngsi_orion(data, url_root, username, password):
     # device_id = data['id']
     resp = None
+    resp = requests.post('{}/entities/'.format(url_root), auth=(username, password), json=data)
     try:  # ...to update the entity...
-        resp = requests.patch('{}/entities/{}/attrs/'.format(url_root, data['id']), auth=(username, password),
-                              json={'NoiseLevelObserved': data['NoiseLevelObserved']})
+        patch_data = data.copy()
+        # Remove illegal keys from patch data
+        del patch_data['id']
+        del patch_data['type']
+        resp = requests.patch('{}/entities/{}/attrs/?options=keyValues'.format(url_root, data['id']),
+                              auth=(username, password), json=patch_data)
     except Exception as err:
         logger.error('Something went wrong! Exception: {}'.format(err))
         print('Something went wrong PATCHing to Orion! Exception: {}'.format(err))
-
     # ...if updating failed, the entity probably doesn't exist yet so create it
     if not resp or (resp.status_code != 204):
-        resp = requests.post('{}/entities/'.format(url_root), auth=(username, password), json=data)
+        resp = requests.post('{}/entities/?options=keyValues'.format(url_root), auth=(username, password), json=data)
     return resp
