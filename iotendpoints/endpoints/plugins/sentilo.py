@@ -119,6 +119,7 @@ def parse_sentilo2ngsi(data, lat=None, lon=None):
             "LAeq": laeq,
             "dateObservedFrom": date_observed_from,
             "dateObservedTo": date_observed_to,
+            "dateObserved": date_observed_to,
             "measurand": [measurand],
             "sonometerClass": sonometer_class,
             "location": location
