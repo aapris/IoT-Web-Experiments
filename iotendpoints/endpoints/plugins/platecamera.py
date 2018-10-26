@@ -19,7 +19,9 @@ from dateutil.parser import parse
 from django.conf.urls import url
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from influxdb.exceptions import InfluxDBClientError
 from endpoints.utils import BasePlugin
+from endpoints.utils import get_influxdb_client, create_influxdb_obj
 from endpoints.utils import get_setting
 from endpoints.views import dump_request
 from endpoints.models import Plate
@@ -79,13 +81,27 @@ class Plugin(BasePlugin):
         for k in ["plate", "date", "country", "confidence", "ip", "direction"]:
             if k not in data.keys():
                 return invalid_data(body_data, "Hint: key '{}' is missing.".format(k), status=400)
+        timestamp = parse(data['date'])
         plate = Plate(
             plate=data['plate'],
-            timestamp=parse(data['date']),
+            timestamp=timestamp,
             country=data['country'],
             confidence=float(data['confidence']),
             ip=data['ip'],
             direction=int(data['direction'])
         )
         plate.save()
-        return HttpResponse('OK')
+        idata = {'vehicle': 1}
+        measurement = create_influxdb_obj('001', 'cnt', idata, timestamp)
+        measurements = [measurement]
+        dbname = 'vehicle'
+        iclient = get_influxdb_client(database=dbname)
+        iclient.create_database(dbname)
+        try:
+            iclient.write_points(measurements)
+            response = HttpResponse("OK")
+        except InfluxDBClientError as err:
+            err_msg = '[EVERYNET] InfluxDB error: {}'.format(err)
+            logger.error(err_msg)
+            response = HttpResponse(err_msg, status=500)
+        return response
