@@ -12,17 +12,28 @@ If you use supervisord to keep gunicorn or similar running, you can add line
 
 Raw gunicorn seems to accept `--env PLATECAMERA_URL=path_without_leading_slash` command line argument.
 """
-
+import json
+import logging
 import os
+from dateutil.parser import parse
 from django.conf.urls import url
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from endpoints.utils import BasePlugin
 from endpoints.utils import get_setting
 from endpoints.views import dump_request
+from endpoints.models import Plate
 
 ENV_NAME = 'PLATECAMERA_URL'
 URL = get_setting(ENV_NAME)
+logger = logging.getLogger(__name__)
+
+
+def invalid_data(data_str, msg, status=400):
+    log_msg = '[EVERYNET] Invalid data: "{}". {}.'.format(data_str[:50], msg)
+    err_msg = 'Invalid data: "{}"... Hint: {}'.format(data_str[:50], msg)
+    logger.error(log_msg)
+    return HttpResponse(err_msg, status=status)
 
 
 class Plugin(BasePlugin):
@@ -55,4 +66,26 @@ class Plugin(BasePlugin):
     @csrf_exempt
     def view_func(self, request):
         res = dump_request(request, postfix='democam')
+        ok_response = HttpResponse("ok")
+        body_data = ''
+        if request.method not in ['POST']:
+            return HttpResponse('Only POST methdod is allowed', status=405)
+        try:
+            body_data = request.body
+            data = json.loads(body_data.decode('utf-8'))
+        except (ValueError, UnicodeDecodeError) as err:
+            return invalid_data(body_data, "Hint: should be UTF-8 json.", status=400)
+        # Validate data
+        for k in ["plate", "date", "country", "confidence", "ip", "direction"]:
+            if k not in data.keys():
+                return invalid_data(body_data, "Hint: key '{}' is missing.".format(k), status=400)
+        plate = Plate(
+            plate=data['plate'],
+            timestamp=parse(data['date']),
+            country=data['country'],
+            confidence=float(data['confidence']),
+            ip=data['ip'],
+            direction=int(data['direction'])
+        )
+        plate.save()
         return HttpResponse('OK')
