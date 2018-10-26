@@ -171,8 +171,13 @@ class Plugin(BasePlugin):
                 err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
                 logger.error(err_msg)
                 response = HttpResponse(err_msg, status=500)
-        else:  # Assume we have key-val data
-            idata = handle_keyval(payload_hex)
+        elif len(payload_hex) >= 2:  # Assume we have key-val data
+            try:
+                idata = handle_keyval(payload_hex)
+            except IndexError as err:
+                err_msg = '[DIGITA] Payload error: {}'.format(err)
+                logger.error(err_msg)
+                response = HttpResponse(err_msg, status=400)
             idata['rssi'] = rssi
             ikeys = list(idata.keys())
             ikeys.sort()
@@ -190,4 +195,8 @@ class Plugin(BasePlugin):
                 err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
                 logger.error(err_msg)
                 response = HttpResponse(err_msg, status=500)
+        else:
+            err_msg = '[DIGITA] Not handled'
+            logger.error(err_msg)
+            response = HttpResponse(err_msg)
         return response
