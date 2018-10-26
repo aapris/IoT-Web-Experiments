@@ -8,6 +8,7 @@ You must declare environment variable DIGITA_URL to activate this plugin.
 import os
 import json
 import logging
+import binascii
 import dateutil
 import pytz
 from django.conf import settings
@@ -57,6 +58,14 @@ def handle_clickey_tempsens(hex_str):
         'temp2': temp2,
         'volt': volts
     }
+
+
+def handle_keyval(hex_str):
+    _str = binascii.unhexlify(hex_str).decode()        # --> 'temp=24.61,hum=28.69'
+    keyvals = [x.split('=') for x in _str.split(',')]  # --> [['temp', '24.61'], ['hum', '28.69']]
+    keyvals = [[x[0], float(x[1])] for x in keyvals]   # --> [['temp', 24.61], ['hum', 28.69]]
+    data = dict(keyvals)                               # --> {'temp': 24.61, 'hum': 28.69}
+    return data
 
 
 class Plugin(BasePlugin):
@@ -150,6 +159,25 @@ class Plugin(BasePlugin):
             idata['rssi'] = rssi
             keys_str = 'tempsens'
             datalogger, created = get_datalogger(device, description='Clickey Tempsens PRO', update_activity=True)
+            ts = dateutil.parser.parse(times)
+            measurement = create_influxdb_obj(device, keys_str, idata, ts)
+            measurements = [measurement]
+            dbname = request.GET.get('db', DIGITA_DB)
+            iclient = get_influxdb_client(database=dbname)
+            iclient.create_database(dbname)
+            try:
+                iclient.write_points(measurements)
+            except InfluxDBClientError as err:
+                err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
+                logger.error(err_msg)
+                response = HttpResponse(err_msg, status=500)
+        else:  # Assume we have key-val data
+            idata = handle_keyval(payload_hex)
+            idata['rssi'] = rssi
+            ikeys = list(idata.keys())
+            ikeys.sort()
+            keys_str = '_'.join(ikeys)
+            datalogger, created = get_datalogger(device, description='LoRaWAN device', update_activity=True)
             ts = dateutil.parser.parse(times)
             measurement = create_influxdb_obj(device, keys_str, idata, ts)
             measurements = [measurement]
