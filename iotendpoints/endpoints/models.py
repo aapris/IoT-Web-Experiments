@@ -77,3 +77,13 @@ class Datalogger(models.Model):
         else:
             self.location = None
         super(Datalogger, self).save(*args, **kwargs)
+
+
+class Plate(models.Model):
+    plate = models.CharField(max_length=20, editable=False)
+    timestamp = models.DateTimeField(editable=False)
+    confidence = models.FloatField(editable=False)
+    country = models.CharField(max_length=50, editable=False)
+    direction = models.IntegerField(editable=False)
+    ip = models.GenericIPAddressField(editable=False)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
