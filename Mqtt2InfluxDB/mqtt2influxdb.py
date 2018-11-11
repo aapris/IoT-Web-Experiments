@@ -152,6 +152,15 @@ def handle_tulevaisuudenesine(topic, data, database):
 
 def handle_ruuvitag(topic, data, database):
     iclient = get_influxdb_client(database=database)
+    for o in data:
+        f = o['fields']
+        if 'battery' in f and f['battery'] < 10:  # old version had mV, new V
+            f['battery'] = int(f['battery'] * 1000)
+            # print("fix battery value")
+        for k in ['mac', 'tx_power']:
+            if k in f:
+                # print("remove {}".format(k))
+                del f[k]
     saved = False
     if args.verbose > 2:
         print(json.dumps(data, indent=2))
