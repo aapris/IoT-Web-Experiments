@@ -28,6 +28,15 @@ DIGITA_DB = get_setting('DIGITA_DB', 'digita')
 logger = logging.getLogger(__name__)
 
 
+def hex2int(hex_str):
+    """
+    Convert 2 hex characters (e.g. "23") to int (35)
+    :param hex_str: hex character string
+    :return: int integer
+    """
+    return int(hex_str, 16)
+
+
 def calc_temp(hex_str):
     """
     Convert 4 hex characters (e.g. "040b") to float temp (25.824175824175825)
@@ -60,11 +69,37 @@ def handle_clickey_tempsens(hex_str):
     }
 
 
+def hex2value10(hex_str):
+    return hex2int(hex_str) / 10.0
+
+
+def handle_aqburk(hex_str):
+    """
+    Parse payload like "2a2a0021002c002800300056003b0000" float values
+    :param hex_str: AQLoRaBurk hex payload
+    :return: dict containing float values
+    """
+    return {
+        'pm25min': hex2value10(hex_str[4:8]),
+        'pm25max': hex2value10(hex_str[8:12]),
+        'pm25avg': hex2value10(hex_str[12:16]),
+        'pm10min': hex2value10(hex_str[16:20]),
+        'pm10max': hex2value10(hex_str[20:24]),
+        'pm10avg': hex2value10(hex_str[24:28]),
+    }
+
+
 def handle_keyval(hex_str):
-    _str = binascii.unhexlify(hex_str).decode()        # --> 'temp=24.61,hum=28.69'
+    """
+    :param hex_str: key-value hex payload
+    :return: dict containing parsed balues
+    :raises UnicodeDecodeError: if hex_str contains illegal bytes for utf8
+    """
+    _str = binascii.unhexlify(hex_str)  # --> b'temp=24.61,hum=28.69'
+    _str = _str.decode()  # --> 'temp=24.61,hum=28.69'
     keyvals = [x.split('=') for x in _str.split(',')]  # --> [['temp', '24.61'], ['hum', '28.69']]
-    keyvals = [[x[0], float(x[1])] for x in keyvals]   # --> [['temp', 24.61], ['hum', 28.69]]
-    data = dict(keyvals)                               # --> {'temp': 24.61, 'hum': 28.69}
+    keyvals = [[x[0], float(x[1])] for x in keyvals]  # --> [['temp', 24.61], ['hum', 28.69]]
+    data = dict(keyvals)  # --> {'temp': 24.61, 'hum': 28.69}
     return data
 
 
@@ -98,12 +133,10 @@ class Plugin(BasePlugin):
     @csrf_exempt
     def view_func(self, request):
         """
-        Endpoint requires idcode, sensor and data parameters. Also a valid Django user must exist. Test like this:
-
-        export DIGITA_URL=digita
+        Endpoint requires valid Digita formatted JSON payload.
         """
-        ok_response = HttpResponse("ok")
-        dump_request(request, postfix='digita')
+        err_msg = ''
+        status = 200
         try:
             body_data = request.body
             data = json.loads(body_data.decode('utf-8'))
@@ -152,8 +185,7 @@ class Plugin(BasePlugin):
                 iclient.write_points(measurements)
             except InfluxDBClientError as err:
                 err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
-                logger.error(err_msg)
-                response = HttpResponse(err_msg, status=500)
+                status = 500
         elif payload_hex[:2] == '13':
             idata = handle_clickey_tempsens(payload_hex)
             idata['rssi'] = rssi
@@ -169,15 +201,34 @@ class Plugin(BasePlugin):
                 iclient.write_points(measurements)
             except InfluxDBClientError as err:
                 err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
-                logger.error(err_msg)
-                response = HttpResponse(err_msg, status=500)
+                status = 500
+        elif payload_hex[:4].lower() == '2a2a':
+            idata = handle_aqburk(payload_hex)
+            idata['rssi'] = rssi
+            keys_str = 'aqburk'
+            datalogger, created = get_datalogger(device, description='FVH AQ burk', update_activity=True)
+            ts = dateutil.parser.parse(times)
+            measurement = create_influxdb_obj(device, keys_str, idata, ts)
+            measurements = [measurement]
+            DIGITA_DB = 'aqburk'
+            dbname = request.GET.get('db', DIGITA_DB)
+            iclient = get_influxdb_client(database=dbname)
+            iclient.create_database(dbname)
+            try:
+                iclient.write_points(measurements)
+            except InfluxDBClientError as err:
+                err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
+                status = 500
         elif len(payload_hex) >= 2:  # Assume we have key-val data
             try:
                 idata = handle_keyval(payload_hex)
-            except IndexError as err:
+            except (UnicodeDecodeError, IndexError) as err:
                 err_msg = '[DIGITA] Payload error: {}'.format(err)
+                status = 400
                 logger.error(err_msg)
-                response = HttpResponse(err_msg, status=400)
+                dump_request(request, postfix='digita')
+                response = HttpResponse(err_msg, status=status)
+                return response
             idata['rssi'] = rssi
             ikeys = list(idata.keys())
             ikeys.sort()
@@ -193,10 +244,11 @@ class Plugin(BasePlugin):
                 iclient.write_points(measurements)
             except InfluxDBClientError as err:
                 err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
-                logger.error(err_msg)
-                response = HttpResponse(err_msg, status=500)
+                status = 500
         else:
             err_msg = '[DIGITA] Not handled'
+        if err_msg != '':
             logger.error(err_msg)
-            response = HttpResponse(err_msg)
+            dump_request(request, postfix='digita')
+            response = HttpResponse(err_msg, status=status)
         return response
