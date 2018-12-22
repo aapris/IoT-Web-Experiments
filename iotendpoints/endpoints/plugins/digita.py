@@ -83,9 +83,11 @@ def handle_aqburk(hex_str):
         'pm25min': hex2value10(hex_str[4:8]),
         'pm25max': hex2value10(hex_str[8:12]),
         'pm25avg': hex2value10(hex_str[12:16]),
-        'pm10min': hex2value10(hex_str[16:20]),
-        'pm10max': hex2value10(hex_str[20:24]),
-        'pm10avg': hex2value10(hex_str[24:28]),
+        'pm25med': hex2value10(hex_str[16:20]),
+        'pm10min': hex2value10(hex_str[20:24]),
+        'pm10max': hex2value10(hex_str[24:28]),
+        'pm10avg': hex2value10(hex_str[28:32]),
+        'pm10med': hex2value10(hex_str[32:36]),
     }
 
 
