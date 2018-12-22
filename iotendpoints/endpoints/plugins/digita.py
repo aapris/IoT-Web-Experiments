@@ -194,7 +194,8 @@ class Plugin(BasePlugin):
             ts = dateutil.parser.parse(times)
             measurement = create_influxdb_obj(device, keys_str, idata, ts)
             measurements = [measurement]
-            dbname = request.GET.get('db', DIGITA_DB)
+            # dbname = request.GET.get('db', DIGITA_DB)
+            dbname = 'digita'
             iclient = get_influxdb_client(database=dbname)
             iclient.create_database(dbname)
             try:
