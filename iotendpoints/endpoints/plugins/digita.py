@@ -79,7 +79,7 @@ def handle_aqburk(hex_str):
     :param hex_str: AQLoRaBurk hex payload
     :return: dict containing float values
     """
-    return {
+    data = {
         'pm25min': hex2value10(hex_str[4:8]),
         'pm25max': hex2value10(hex_str[8:12]),
         'pm25avg': hex2value10(hex_str[12:16]),
@@ -89,6 +89,12 @@ def handle_aqburk(hex_str):
         'pm10avg': hex2value10(hex_str[28:32]),
         'pm10med': hex2value10(hex_str[32:36]),
     }
+    if len(hex_str) == 52:
+        data['temp'] = round(hex2value10(hex_str[36:40]) - 100, 1)
+        data['humi'] = hex2value10(hex_str[40:44])
+        data['pres'] = hex2value10(hex_str[44:48])
+        data['gas'] = hex2value10(hex_str[48:52])
+    return data
 
 
 def handle_keyval(hex_str):
@@ -205,7 +211,7 @@ class Plugin(BasePlugin):
             except InfluxDBClientError as err:
                 err_msg = '[DIGITA] InfluxDB error: {}'.format(err)
                 status = 500
-        elif payload_hex[:4].lower() == '2a2a':
+        elif payload_hex[:2].lower() == '2a':  # payload_hex[:4].lower() == '2a2a':
             idata = handle_aqburk(payload_hex)
             idata['rssi'] = rssi
             keys_str = 'aqburk'
