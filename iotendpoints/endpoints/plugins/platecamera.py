@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 def invalid_data(data_str, msg, status=400):
-    log_msg = '[EVERYNET] Invalid data: "{}". {}.'.format(data_str[:50], msg)
+    log_msg = '[PLATECAMERA] Invalid data: "{}". {}.'.format(data_str[:50], msg)
     err_msg = 'Invalid data: "{}"... Hint: {}'.format(data_str[:50], msg)
     logger.error(log_msg)
     return HttpResponse(err_msg, status=status)
@@ -78,6 +78,8 @@ class Plugin(BasePlugin):
         except (ValueError, UnicodeDecodeError) as err:
             return invalid_data(body_data, "Hint: should be UTF-8 json.", status=400)
         # Validate data
+        if "direction" not in data.keys():
+            data["direction"] = -1
         for k in ["plate", "date", "country", "confidence", "ip", "direction"]:
             if k not in data.keys():
                 return invalid_data(body_data, "Hint: key '{}' is missing.".format(k), status=400)
@@ -101,7 +103,7 @@ class Plugin(BasePlugin):
             iclient.write_points(measurements)
             response = HttpResponse("OK")
         except InfluxDBClientError as err:
-            err_msg = '[EVERYNET] InfluxDB error: {}'.format(err)
+            err_msg = '[PLATECAMERA] InfluxDB error: {}'.format(err)
             logger.error(err_msg)
             response = HttpResponse(err_msg, status=500)
         return response
