@@ -12,6 +12,7 @@ import logging
 import datetime
 import pytz
 import re
+import random
 from django.conf import settings
 from django.conf.urls import url
 from django.http import HttpResponse
@@ -87,7 +88,6 @@ class Plugin(BasePlugin):
         export EVERYNET_URL=everynet
         """
         ok_response = HttpResponse("ok")
-        dump_request(request, postfix='everynet')
         body_data = ''
         if request.method not in ['OPTIONS', 'POST']:
             return HttpResponse('Only OPTIONS, POST methdods are allowed', status=405)
@@ -111,8 +111,10 @@ class Plugin(BasePlugin):
         os.makedirs(path, exist_ok=True)
         fpath = os.path.join(path, now.strftime('%Y%m%dT%H%M%S.%fZ.json'))
         dl_descr = 'everynet'
-        with open(fpath, 'wt') as destination:
-            destination.write(json.dumps(data, indent=1))
+        if random.randint(0,50) == 10:  # Save 1/50 of packages for debugging purposes
+            with open(fpath, 'wt') as destination:
+                destination.write(json.dumps(data, indent=1))
+                dump_request(request, postfix='everynet')
         if packet_type == 'error':
             logger.warning('[EVERYNET]: Got error msg, check {} for details.'.format(fpath))
             return ok_response
