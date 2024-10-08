@@ -1,4 +1,4 @@
-django==2.2.28
+django==4.2.16
 psycopg2
 gunicorn
 celery
